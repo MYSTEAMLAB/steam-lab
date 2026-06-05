@@ -1,0 +1,250 @@
+{
+  "pins": {
+    "D2": {
+      "name": "D2",
+      "label": "Pin 2",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT"
+      ]
+    },
+    "D3": {
+      "name": "D3",
+      "label": "Pin 3 (PWM)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "D4": {
+      "name": "D4",
+      "label": "Pin 4",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT"
+      ]
+    },
+    "D5": {
+      "name": "D5",
+      "label": "Pin 5 (PWM)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "D6": {
+      "name": "D6",
+      "label": "Pin 6 (PWM)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "D7": {
+      "name": "D7",
+      "label": "Pin 7",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT"
+      ]
+    },
+    "D8": {
+      "name": "D8",
+      "label": "Pin 8",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT"
+      ]
+    },
+    "D9": {
+      "name": "D9",
+      "label": "Pin 9 (PWM)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "D10": {
+      "name": "D10",
+      "label": "Pin 10 (SPI SS)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "D11": {
+      "name": "D11",
+      "label": "Pin 11 (SPI MOSI)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "SPI_MOSI"
+      ]
+    },
+    "D12": {
+      "name": "D12",
+      "label": "Pin 12 (SPI MISO)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "SPI_MISO"
+      ]
+    },
+    "D13": {
+      "name": "D13",
+      "label": "Pin 13 (LED)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT"
+      ]
+    },
+    "A0": {
+      "name": "A0",
+      "label": "Analog 0",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN"
+      ]
+    },
+    "A1": {
+      "name": "A1",
+      "label": "Analog 1",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN"
+      ]
+    },
+    "A2": {
+      "name": "A2",
+      "label": "Analog 2",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN"
+      ]
+    },
+    "A3": {
+      "name": "A3",
+      "label": "Analog 3",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN"
+      ]
+    },
+    "A4": {
+      "name": "A4",
+      "label": "Analog 4 (SDA)",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN",
+        "I2C_SDA"
+      ]
+    },
+    "A5": {
+      "name": "A5",
+      "label": "Analog 5 (SCL)",
+      "inputOnly": true,
+      "interfaces": [
+        "ANALOG_IN",
+        "DIGITAL_IN",
+        "I2C_SCL"
+      ]
+    }
+  },
+  "peripherals": {
+    "ir_sensor": {
+      "type": "input",
+      "preferredPin": "D2",
+      "compat": [
+        "DIGITAL_IN"
+      ]
+    },
+    "ldr": {
+      "type": "input",
+      "preferredPin": "A0",
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "temp": {
+      "type": "input",
+      "preferredPin": "A1",
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "servo": {
+      "type": "output",
+      "preferredPin": "D9",
+      "compat": [
+        "PWM"
+      ]
+    },
+    "oled": {
+      "type": "i2c",
+      "preferredPin": {
+        "sda": "A4",
+        "scl": "A5"
+      },
+      "compat": [
+        "I2C_SDA",
+        "I2C_SCL"
+      ]
+    },
+    "motor_1": {
+      "type": "motor",
+      "preferredPin": [
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "compat": [
+        "DIGITAL_OUT"
+      ]
+    },
+    "color_sensor": {
+      "type": "i2c",
+      "preferredPin": {
+        "sda": "A4",
+        "scl": "A5"
+      },
+      "compat": [
+        "I2C_SDA",
+        "I2C_SCL"
+      ]
+    },
+    "joystick": {
+      "type": "analog",
+      "preferredPin": {
+        "vrx": "A0",
+        "vry": "A1"
+      },
+      "compat": [
+        "ANALOG_IN"
+      ]
+    }
+  }
+}

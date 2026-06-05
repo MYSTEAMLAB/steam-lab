@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base resets
+───────────────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent text selection in UI chrome (drag handles, buttons etc.) */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Electron frameless window drag regions
+   Apply app-drag-region to areas that should move the window.
+   Apply app-no-drag to interactive children inside those areas.
+───────────────────────────────────────────────────────────────────────────── */
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scrollbar styling (applies to terminal, code panels, etc.)
+───────────────────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2d3f5e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Focus ring (accessible keyboard navigation)
+───────────────────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mono font utility — used in serial terminal / code preview
+───────────────────────────────────────────────────────────────────────────── */
+.font-code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Blockly Visual Customizations & Overrides
+   Forces ultra-thin Scratch-like dividers and sleek panel boundaries.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Toolbox ──────────────────────────────────────────────────────────────── */
+.blocklyToolboxDiv {
+  border-right: 1px solid #2d3f5e !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Flyout Background (SVG path/rect) ────────────────────────────────── */
+.blocklyFlyout {
+  border-right: none !important;
+  border-left: none !important;
+}
+
+.blocklyFlyoutBackground {
+  fill: #1e293b !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  filter: none !important;
+}
+
+/* ── ALL Separators ───────────────────────────────────────────────────── */
+.blocklyFlyoutSeparator,
+.blocklySeparator {
+  display: none !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ── Flyout internal lines ────────────────────────────────────────────── */
+.blocklyFlyout line,
+.blocklyFlyoutSvg line {
+  stroke: none !important;
+  display: none !important;
+}
+
+/* ── Scrollbar Handles (thumbs) ───────────────────────────────────────── */
+/* Make main workspace scrollbar thin and subtle */
+.blocklyScrollbarHandle {
+  fill: #2d3f5e !important;
+  rx: 3 !important;
+  opacity: 0.5 !important;
+  transition: fill 0.15s ease, opacity 0.15s ease;
+}
+
+.blocklyScrollbarHandle:hover {
+  fill: #3b82f6 !important;
+  opacity: 1 !important;
+}
+
+/* Reduce width of the entire vertical scrollbar group */
+.blocklyScrollbarVertical {
+  opacity: 0.6;
+}
+
+.blocklyScrollbarHorizontal {
+  opacity: 0.6;
+}
+
+/* ── Zoom / Trashcan controls ─────────────────────────────────────────── */
+.blocklyZoom, .blocklyTrash {
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+.blocklyZoom:hover, .blocklyTrash:hover {
+  opacity: 1;
+}
+

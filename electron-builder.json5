@@ -1,0 +1,27 @@
+{
+  "files": [
+    "out/**/*",
+    "src/shared/boards/**/*",
+    "resources/**/*"
+  ],
+  "directories": {
+    "buildResources": "resources"
+  },
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "icon": "resources/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "installerIcon": "resources/icon.ico",
+    "uninstallerIcon": "resources/icon.ico"
+  },
+  "extraResources": [
+    {
+      "from": "resources/arduino-cli",
+      "to": "arduino-cli",
+      "filter": ["**/*"]
+    }
+  ]
+}

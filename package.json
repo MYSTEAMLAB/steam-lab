@@ -1,0 +1,50 @@
+{
+  "name": "edublocks-studio",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "EduBlocks Studio - Visual ESP32/Arduino IDE for Students",
+  "main": "./out/main/index.js",
+  "homepage": "https://edublocks.studio",
+  "author": "EduBlocks Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-vite build && electron-builder",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "adm-zip": "^0.5.17",
+    "blockly": "^12.5.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.378.0",
+    "monaco-editor": "^0.55.1",
+    "serialport": "^13.0.0",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config-ts": "^2.0.0",
+    "@electron-toolkit/preload": "^3.0.0",
+    "@electron-toolkit/utils": "^3.0.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^20.14.5",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.3.0",
+    "eslint": "^9.4.0",
+    "playwright": "^1.60.0",
+    "postcss": "^8.4.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "vite": "^5.3.1"
+  }
+}

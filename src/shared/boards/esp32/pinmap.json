@@ -1,0 +1,264 @@
+{
+  "pins": {
+    "GPIO34": {
+      "name": "GPIO34",
+      "label": "GPIO 34",
+      "inputOnly": true,
+      "interfaces": [
+        "DIGITAL_IN",
+        "ANALOG_IN"
+      ]
+    },
+    "GPIO35": {
+      "name": "GPIO35",
+      "label": "GPIO 35",
+      "inputOnly": true,
+      "interfaces": [
+        "DIGITAL_IN",
+        "ANALOG_IN"
+      ]
+    },
+    "GPIO32": {
+      "name": "GPIO32",
+      "label": "GPIO 32",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "ANALOG_IN"
+      ]
+    },
+    "GPIO33": {
+      "name": "GPIO33",
+      "label": "GPIO 33",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "ANALOG_IN"
+      ]
+    },
+    "GPIO25": {
+      "name": "GPIO25",
+      "label": "GPIO 25",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "ANALOG_IN",
+        "ANALOG_OUT"
+      ]
+    },
+    "GPIO26": {
+      "name": "GPIO26",
+      "label": "GPIO 26",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "ANALOG_IN",
+        "ANALOG_OUT",
+        "PWM"
+      ]
+    },
+    "GPIO27": {
+      "name": "GPIO27",
+      "label": "GPIO 27",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "ANALOG_IN",
+        "TOUCH"
+      ]
+    },
+    "GPIO16": {
+      "name": "GPIO16",
+      "label": "GPIO 16",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "UART_RX",
+        "PWM"
+      ]
+    },
+    "GPIO17": {
+      "name": "GPIO17",
+      "label": "GPIO 17",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "UART_TX",
+        "PWM"
+      ]
+    },
+    "GPIO18": {
+      "name": "GPIO18",
+      "label": "GPIO 18",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "SPI_SCK",
+        "PWM"
+      ]
+    },
+    "GPIO19": {
+      "name": "GPIO19",
+      "label": "GPIO 19",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "SPI_MISO",
+        "PWM"
+      ]
+    },
+    "GPIO21": {
+      "name": "GPIO21",
+      "label": "GPIO 21 (SDA)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "I2C_SDA"
+      ]
+    },
+    "GPIO22": {
+      "name": "GPIO22",
+      "label": "GPIO 22 (SCL)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "I2C_SCL"
+      ]
+    },
+    "GPIO23": {
+      "name": "GPIO23",
+      "label": "GPIO 23",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "SPI_MOSI",
+        "PWM"
+      ]
+    },
+    "GPIO5": {
+      "name": "GPIO5",
+      "label": "GPIO 5",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    },
+    "GPIO13": {
+      "name": "GPIO13",
+      "label": "GPIO 13",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM"
+      ]
+    }
+  },
+  "peripherals": {
+    "ir_sensor": {
+      "type": "input",
+      "preferredPin": "GPIO34",
+      "compat": [
+        "DIGITAL_IN"
+      ]
+    },
+    "ldr": {
+      "type": "input",
+      "preferredPin": "GPIO35",
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "temp": {
+      "type": "input",
+      "preferredPin": "GPIO32",
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "joystick": {
+      "type": "analog",
+      "preferredPin": {
+        "vrx": "GPIO34",
+        "vry": "GPIO35"
+      },
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "touch": {
+      "type": "input",
+      "preferredPin": "GPIO27",
+      "compat": [
+        "TOUCH"
+      ]
+    },
+    "oled": {
+      "type": "i2c",
+      "preferredPin": {
+        "sda": "GPIO21",
+        "scl": "GPIO22"
+      },
+      "compat": [
+        "I2C_SDA",
+        "I2C_SCL"
+      ]
+    },
+    "servo": {
+      "type": "output",
+      "preferredPin": "GPIO13",
+      "compat": [
+        "PWM"
+      ]
+    },
+    "motor_1": {
+      "type": "motor",
+      "preferredPin": [
+        "GPIO16",
+        "GPIO17",
+        "GPIO18",
+        "GPIO19"
+      ],
+      "compat": [
+        "DIGITAL_OUT"
+      ]
+    },
+    "motor_2": {
+      "type": "motor",
+      "preferredPin": [
+        "GPIO21",
+        "GPIO22",
+        "GPIO23",
+        "GPIO5"
+      ],
+      "compat": [
+        "DIGITAL_OUT"
+      ]
+    },
+    "color_sensor": {
+      "type": "i2c",
+      "preferredPin": {
+        "sda": "GPIO21",
+        "scl": "GPIO22"
+      },
+      "compat": [
+        "I2C_SDA",
+        "I2C_SCL"
+      ]
+    }
+  }
+}
