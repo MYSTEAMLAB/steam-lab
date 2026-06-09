@@ -7,9 +7,13 @@ import type { BoardConfig, PinMap, RegisteredBoard } from '../types/board'
 //   2. Create src/shared/boards/<board-id>/pinmap.json
 //   3. Import and register below — no other file changes needed.
 // ─────────────────────────────────────────────────────────────────────────────
+// @ts-ignore
 import esp32Config from './esp32/board-config.json'
+// @ts-ignore
 import esp32Pinmap from './esp32/pinmap.json'
+// @ts-ignore
 import unoConfig from './arduino-uno/board-config.json'
+// @ts-ignore
 import unoPinmap from './arduino-uno/pinmap.json'
 
 // ─────────────────────────────────────────────────────────────────────────────

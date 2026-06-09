@@ -10,8 +10,6 @@ function runTest(testName: string, setupBlocks: (workspace: Blockly.Workspace, s
   const workspace = new Blockly.Workspace();
   const setupBlock = workspace.newBlock('system_setup');
   const loopBlock = workspace.newBlock('system_loop');
-  setupBlock.initSvg(); setupBlock.render();
-  loopBlock.initSvg(); loopBlock.render();
 
   setupBlocks(workspace, setupBlock, loopBlock);
 
@@ -33,8 +31,8 @@ runTest("Test A: Button -> Motor", (workspace, setupBlock, loopBlock) => {
   ifBlock.getInput('DO0')!.connection!.connect(motorBlock.previousConnection!);
   ifBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'btn1', type: 'button', name: 'Btn', x: 0, y: 0, mappedPin: '35' },
-  { id: 'motor1', type: 'dcmotor', name: 'Motor', x: 0, y: 0, mappedPin: { pwm: '18', in1: '19', in2: '21' } }
+  { id: 'btn1', type: 'button', mappedPin: '35', canvasX: 0, canvasY: 0 },
+  { id: 'motor1', type: 'dcmotor', mappedPin: { pwm: '18', in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
 ]);
 
 // B. Potentiometer -> Motor Speed
@@ -46,8 +44,8 @@ runTest("Test B: Potentiometer -> Motor Speed", (workspace, setupBlock, loopBloc
   motorBlock.getInput('SPEED')!.connection!.connect(potBlock.outputConnection!);
   motorBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'pot1', type: 'potentiometer', name: 'Pot', x: 0, y: 0, mappedPin: '34' },
-  { id: 'motor1', type: 'dcmotor', name: 'Motor', x: 0, y: 0, mappedPin: { pwm: '18', in1: '19', in2: '21' } }
+  { id: 'pot1', type: 'potentiometer', mappedPin: '34', canvasX: 0, canvasY: 0 },
+  { id: 'motor1', type: 'dcmotor', mappedPin: { pwm: '18', in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
 ]);
 
 // C. Touch Sensor -> OLED
@@ -60,8 +58,8 @@ runTest("Test C: Touch Sensor -> OLED", (workspace, setupBlock, loopBlock) => {
   printBlock.getInput('TEXT')!.connection!.connect(touchBlock.outputConnection!);
   printBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'touch1', type: 'touch', name: 'Touch', x: 0, y: 0, mappedPin: '4' },
-  { id: 'oled1', type: 'oled', name: 'OLED', x: 0, y: 0, mappedPin: { sda: '21', scl: '22' } }
+  { id: 'touch1', type: 'touch', mappedPin: '4', canvasX: 0, canvasY: 0 },
+  { id: 'oled1', type: 'oled', mappedPin: { sda: '21', scl: '22' }, canvasX: 0, canvasY: 0 }
 ]);
 
 // D. LDR -> LED
@@ -74,8 +72,8 @@ runTest("Test D: LDR -> LED", (workspace, setupBlock, loopBlock) => {
   ledBlock.getInput('STATE')!.connection!.connect(ldrBlock.outputConnection!);
   ledBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'ldr1', type: 'ldr', name: 'LDR', x: 0, y: 0, mappedPin: '32' },
-  { id: 'led1', type: 'led', name: 'LED', x: 0, y: 0, mappedPin: '2' }
+  { id: 'ldr1', type: 'ldr', mappedPin: '32', canvasX: 0, canvasY: 0 },
+  { id: 'led1', type: 'led', mappedPin: '2', canvasX: 0, canvasY: 0 }
 ]);
 
 // E. Servo Control
@@ -88,7 +86,7 @@ runTest("Test E: Servo Control", (workspace, setupBlock, loopBlock) => {
   servoBlock.getInput('ANGLE')!.connection!.connect(numBlock.outputConnection!);
   servoBlock.previousConnection!.connect(setupBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'servo1', type: 'servo', name: 'Servo', x: 0, y: 0, mappedPin: '13' }
+  { id: 'servo1', type: 'servo', mappedPin: '13', canvasX: 0, canvasY: 0 }
 ]);
 
 // F. Bluetooth
@@ -101,5 +99,5 @@ runTest("Test F: Bluetooth", (workspace, setupBlock, loopBlock) => {
   printBlock.getInput('DATA')!.connection!.connect(numBlock.outputConnection!);
   printBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
-  { id: 'bt1', type: 'bluetooth', name: 'BT', x: 0, y: 0, mappedPin: { tx: '16', rx: '17' } }
+  { id: 'bt1', type: 'bluetooth', mappedPin: { tx: '16', rx: '17' }, canvasX: 0, canvasY: 0 }
 ]);

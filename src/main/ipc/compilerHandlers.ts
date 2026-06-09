@@ -2,7 +2,7 @@ import { ipcMain, app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import AdmZip from 'adm-zip';
 
 const COMPILER_DIR = path.join(app.getPath('userData'), 'compiler');
@@ -93,15 +93,36 @@ export function registerCompilerHandlers() {
         const sketchPath = path.join(sketchDir, 'sketch.ino');
         fs.writeFileSync(sketchPath, code);
 
+        event.sender.send('compiler:log', ' ');
+        event.sender.send('compiler:log', `==== COMPILATION START ====`);
         event.sender.send('compiler:log', `[Compiler] Compiling for ${fqbn}...`);
         
-        exec(`"${CLI_PATH}" compile -b ${fqbn} "${sketchDir}"`, { maxBuffer: 1024 * 1024 * 5 }, (err, stdout, stderr) => {
-          if (err) {
-            resolve({ success: false, log: stdout + '\n' + stderr });
+        const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, sketchDir]);
+        
+        let fullLog = '';
+
+        proc.stdout.on('data', (data) => {
+          const chunk = data.toString();
+          fullLog += chunk;
+          event.sender.send('compiler:log', chunk.trim());
+        });
+
+        proc.stderr.on('data', (data) => {
+          const chunk = data.toString();
+          fullLog += chunk;
+          event.sender.send('compiler:log', `[Error] ${chunk.trim()}`);
+        });
+
+        proc.on('close', (code) => {
+          if (code !== 0) {
+            event.sender.send('compiler:log', `==== COMPILATION FAILED ====`);
+            resolve({ success: false, log: fullLog });
           } else {
-            resolve({ success: true, log: stdout });
+            event.sender.send('compiler:log', `==== COMPILATION SUCCESS ====`);
+            resolve({ success: true, log: fullLog });
           }
         });
+
       } catch (e: any) {
         resolve({ success: false, log: e.message });
       }
@@ -117,15 +138,36 @@ export function registerCompilerHandlers() {
         if (!fs.existsSync(sketchDir)) fs.mkdirSync(sketchDir, { recursive: true });
         fs.writeFileSync(path.join(sketchDir, 'sketch.ino'), code);
 
+        event.sender.send('compiler:log', ' ');
+        event.sender.send('compiler:log', `==== UPLOAD START ====`);
         event.sender.send('compiler:log', `[Compiler] Uploading to ${port}...`);
         
-        exec(`"${CLI_PATH}" upload -b ${fqbn} -p ${port} "${sketchDir}"`, { maxBuffer: 1024 * 1024 * 5 }, (err, stdout, stderr) => {
-          if (err) {
-            resolve({ success: false, log: stdout + '\n' + stderr });
+        const proc = spawn(CLI_PATH, ['upload', '-b', fqbn, '-p', port, sketchDir]);
+        
+        let fullLog = '';
+
+        proc.stdout.on('data', (data) => {
+          const chunk = data.toString();
+          fullLog += chunk;
+          event.sender.send('compiler:log', chunk.trim());
+        });
+
+        proc.stderr.on('data', (data) => {
+          const chunk = data.toString();
+          fullLog += chunk;
+          event.sender.send('compiler:log', `[Error] ${chunk.trim()}`);
+        });
+
+        proc.on('close', (code) => {
+          if (code !== 0) {
+            event.sender.send('compiler:log', `==== UPLOAD FAILED ====`);
+            resolve({ success: false, log: fullLog });
           } else {
-            resolve({ success: true, log: stdout });
+            event.sender.send('compiler:log', `==== UPLOAD SUCCESS ====`);
+            resolve({ success: true, log: fullLog });
           }
         });
+
       } catch (e: any) {
         resolve({ success: false, log: e.message });
       }
