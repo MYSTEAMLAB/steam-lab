@@ -4,14 +4,27 @@ import { useAppStore } from '../store/useAppStore'
 
 export const Toolbar: React.FC = () => {
   const { generatedCode, selectedBoard } = useAppStore()
+  const setActiveRightTab = useAppStore(s => s.setActiveRightTab)
   const [ports, setPorts] = useState<any[]>([])
   const [selectedPort, setSelectedPort] = useState<string>('')
   const [isCompiling, setIsCompiling] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isCompiledSuccessfully, setIsCompiledSuccessfully] = useState(false)
   const [statusText, setStatusText] = useState('Ready')
 
-  const fetchPorts = async () => {
+  // Reset compile state if the generated code changes
+  useEffect(() => {
+    setIsCompiledSuccessfully(false)
+    if (statusText === 'Compilation Successful!' || statusText.includes('Upload')) {
+      setStatusText('Code changed. Verify required.')
+    }
+  }, [generatedCode])
+
+  const fetchPorts = async (manual = false) => {
     try {
+      if (manual) {
+        setActiveRightTab('monitor')
+      }
       if ((window as any).api?.serial) {
         const p = await (window as any).api.serial.getPorts()
         setPorts(p)
@@ -31,16 +44,20 @@ export const Toolbar: React.FC = () => {
   const handleCompile = async () => {
     if (!selectedBoard || !generatedCode) return
     setIsCompiling(true)
+    setIsCompiledSuccessfully(false)
     setStatusText('Compiling...')
     try {
       const result = await (window as any).api.compiler.compile(generatedCode, selectedBoard.fqbn)
       if (result.success) {
+        setIsCompiledSuccessfully(true)
         setStatusText('Compilation Successful!')
       } else {
         setStatusText('Compilation Failed (See Monitor)')
+        setActiveRightTab('monitor')
       }
     } catch (e) {
       setStatusText('Compiler Error')
+      setActiveRightTab('monitor')
     } finally {
       setIsCompiling(false)
     }
@@ -84,8 +101,9 @@ export const Toolbar: React.FC = () => {
         {/* Upload Button */}
         <button
           onClick={handleUpload}
-          disabled={isCompiling || isUploading || !selectedBoard || !selectedPort}
-          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 disabled:opacity-50 text-emerald-100 rounded transition-colors text-sm font-medium shadow-sm"
+          disabled={isCompiling || isUploading || !selectedBoard || !selectedPort || !isCompiledSuccessfully}
+          title={!selectedPort ? 'No serial port selected' : !isCompiledSuccessfully ? 'Compilation required before upload' : 'Upload to board'}
+          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-100 rounded transition-colors text-sm font-medium shadow-sm"
         >
           {isUploading ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <UploadCloud size={16} className="text-emerald-400" />}
           Upload
@@ -97,14 +115,21 @@ export const Toolbar: React.FC = () => {
           <select
             value={selectedPort}
             onChange={e => setSelectedPort(e.target.value)}
-            className="bg-transparent border-none text-sm text-slate-200 focus:ring-0 outline-none w-32 cursor-pointer"
+            disabled={ports.length === 0}
+            className="bg-transparent border-none text-sm text-slate-200 focus:ring-0 outline-none w-48 cursor-pointer disabled:opacity-50"
           >
-            <option value="" disabled>Select Port...</option>
+            {ports.length === 0 ? (
+              <option value="" disabled>No device found</option>
+            ) : (
+              <option value="" disabled>Select Port...</option>
+            )}
             {ports.map(p => (
-              <option key={p.path} value={p.path} className="bg-surface-200">{p.path}</option>
+              <option key={p.path} value={p.path} className="bg-surface-200">
+                {p.friendlyName ? p.friendlyName : p.path}
+              </option>
             ))}
           </select>
-          <button onClick={fetchPorts} className="p-1 hover:bg-surface-400 rounded text-slate-400 hover:text-slate-200 transition-colors">
+          <button onClick={() => fetchPorts(true)} className="p-1 hover:bg-surface-400 rounded text-slate-400 hover:text-slate-200 transition-colors">
             <RefreshCw size={14} />
           </button>
         </div>
