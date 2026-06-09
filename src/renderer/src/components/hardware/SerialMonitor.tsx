@@ -1,27 +1,32 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Terminal, Trash2, Send } from 'lucide-react'
+import { Terminal, Trash2, Send, Copy, Download } from 'lucide-react'
 
 export const SerialMonitor: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([])
   const [input, setInput] = useState('')
   const logsEndRef = useRef<HTMLDivElement>(null)
 
+  const getTimestamp = () => {
+    const now = new Date()
+    return `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`
+  }
+
   useEffect(() => {
     if (!(window as any).api) return
 
     // Subscribe to Compiler Logs
     const cleanupCompiler = (window as any).api.compiler.onLog((log: string) => {
-      setLogs(prev => [...prev, log])
+      setLogs(prev => [...prev, `${getTimestamp()} ${log}`])
     })
 
     // Subscribe to Serial Data
     const cleanupSerial = (window as any).api.serial.onData((data: string) => {
-      setLogs(prev => [...prev, data.trim()])
+      setLogs(prev => [...prev, `${getTimestamp()} ${data.trim()}`])
     })
     
     // Subscribe to Serial Errors
     const cleanupSerialError = (window as any).api.serial.onError((err: string) => {
-      setLogs(prev => [...prev, `[Serial Error] ${err}`])
+      setLogs(prev => [...prev, `${getTimestamp()} [Serial Error] ${err}`])
     })
 
     return () => {
@@ -38,7 +43,7 @@ export const SerialMonitor: React.FC = () => {
   const handleSend = () => {
     if (!input.trim() || !(window as any).api) return
     ;(window as any).api.serial.write(input + '\n')
-    setLogs(prev => [...prev, `> ${input}`])
+    setLogs(prev => [...prev, `${getTimestamp()} > ${input}`])
     setInput('')
   }
 
@@ -46,6 +51,20 @@ export const SerialMonitor: React.FC = () => {
     if (e.key === 'Enter') {
       handleSend()
     }
+  }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(logs.join('\n'))
+  }
+
+  const handleExport = () => {
+    const blob = new Blob([logs.join('\n')], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `edublocks_logs_${Date.now()}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -56,13 +75,32 @@ export const SerialMonitor: React.FC = () => {
           <Terminal size={14} />
           <span className="uppercase font-semibold tracking-wider text-[10px]">Output Monitor</span>
         </div>
-        <button 
-          onClick={() => setLogs([])}
-          className="p-1 hover:bg-surface-300 rounded text-slate-500 hover:text-red-400 transition-colors"
-          title="Clear Output"
-        >
-          <Trash2 size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={handleCopy}
+            disabled={logs.length === 0}
+            className="p-1 hover:bg-surface-300 rounded text-slate-500 hover:text-slate-200 transition-colors disabled:opacity-50"
+            title="Copy Logs"
+          >
+            <Copy size={14} />
+          </button>
+          <button 
+            onClick={handleExport}
+            disabled={logs.length === 0}
+            className="p-1 hover:bg-surface-300 rounded text-slate-500 hover:text-slate-200 transition-colors disabled:opacity-50"
+            title="Export Logs"
+          >
+            <Download size={14} />
+          </button>
+          <div className="w-px h-3 bg-panel-border mx-1" />
+          <button 
+            onClick={() => setLogs([])}
+            className="p-1 hover:bg-surface-300 rounded text-slate-500 hover:text-red-400 transition-colors"
+            title="Clear Output"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Logs Area */}
@@ -70,11 +108,15 @@ export const SerialMonitor: React.FC = () => {
         {logs.length === 0 ? (
           <div className="text-slate-600 italic">No output...</div>
         ) : (
-          logs.map((log, i) => (
-            <div key={i} className={log.startsWith('[Error]') || log.includes('Error') || log.includes('Failed') ? 'text-red-400' : log.startsWith('[Compiler]') || log.startsWith('[Installer]') ? 'text-blue-400' : ''}>
-              {log}
-            </div>
-          ))
+          logs.map((log, i) => {
+            const isError = log.includes('[Error]') || log.includes('Error') || log.includes('Failed') || log.includes('FAILED')
+            const isSystem = log.includes('[Compiler]') || log.includes('[Installer]') || log.includes('====')
+            return (
+              <div key={i} className={isError ? 'text-red-400' : isSystem ? 'text-blue-400 font-bold' : ''}>
+                {log}
+              </div>
+            )
+          })
         )}
         <div ref={logsEndRef} />
       </div>
