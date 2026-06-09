@@ -17,6 +17,8 @@ export interface AppState {
   // ── UI State ──────────────────────────────────────────────────────────────
   /** Active center panel tab */
   activeTab: 'blocks' | 'hardware'
+  /** Active right panel tab */
+  activeRightTab: 'code' | 'connections' | 'monitor'
 
   // ── Hardware Canvas ───────────────────────────────────────────────────────
   /** Layouts for each board ID (devices and wires) */
@@ -68,6 +70,7 @@ export interface AppActions {
   
   // UI Actions
   setActiveTab: (tab: 'blocks' | 'hardware') => void
+  setActiveRightTab: (tab: 'code' | 'connections' | 'monitor') => void
 
   // Hardware canvas actions
   addDevice: (device: PlacedDevice) => void
@@ -112,6 +115,7 @@ const initialState: AppState = {
   availableBoards: [],
   selectedBoard: null,
   activeTab: 'blocks',
+  activeRightTab: 'code',
   boardLayouts: {},
   selectedItemId: null,
   projectName: 'Untitled Project',
@@ -198,6 +202,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // ── UI ──────────────────────────────────────────────────────────────
       setActiveTab: (tab) => set({ activeTab: tab }),
+      setActiveRightTab: (tab) => set({ activeRightTab: tab }),
 
       // ── Hardware canvas ─────────────────────────────────────────────────
       addDevice: (device) =>

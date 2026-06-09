@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpen, Code2, Cpu, Layers, Minus, Square, X } from 'lucide-react'
+import { BookOpen, Code2, Cpu, Layers, Minus, Square, X, Terminal, Cable } from 'lucide-react'
 import { BoardSelector } from '@renderer/components/BoardSelector'
 import { BoardPreviewWidget } from '@renderer/components/BoardPreviewWidget'
 import { BlocklyWorkspace } from '@renderer/components/blockly/BlocklyWorkspace'
@@ -21,6 +21,8 @@ export const AppLayout: React.FC = () => {
   const projectName = useAppStore(s => s.projectName)
   const activeTab = useAppStore(s => s.activeTab)
   const setActiveTab = useAppStore(s => s.setActiveTab)
+  const activeRightTab = useAppStore(s => s.activeRightTab)
+  const setActiveRightTab = useAppStore(s => s.setActiveRightTab)
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-DEFAULT text-slate-200 select-none">
@@ -151,30 +153,68 @@ export const AppLayout: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Right Panel: Code Preview + Terminal ──────────────────────── */}
+        {/* ── Right Panel: Tabbed Interfaces ──────────────────────── */}
         <aside
           id="panel-code"
           className="
-            flex flex-col w-80 shrink-0
+            flex flex-col w-[360px] shrink-0
             bg-surface-50 border-l border-panel-border
             overflow-hidden
           "
         >
-          <div className="flex-col flex-1 min-h-0">
-            <MonacoEditorPanel />
+          {/* Tabs Header */}
+          <div className="flex items-center h-8 shrink-0 border-b border-panel-border bg-surface-100/50">
+            <button
+              onClick={() => setActiveRightTab('code')}
+              className={`
+                flex items-center justify-center flex-1 h-full border-r border-panel-border
+                text-[10px] font-semibold tracking-wide uppercase transition-colors
+                ${activeRightTab === 'code'
+                  ? 'bg-surface-DEFAULT text-blue-400 border-b-2 border-b-blue-500'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-surface-100'
+                }
+              `}
+            >
+              <Code2 size={13} className="mr-1" /> Code
+            </button>
+            <button
+              onClick={() => setActiveRightTab('connections')}
+              className={`
+                flex items-center justify-center flex-1 h-full border-r border-panel-border
+                text-[10px] font-semibold tracking-wide uppercase transition-colors
+                ${activeRightTab === 'connections'
+                  ? 'bg-surface-DEFAULT text-emerald-400 border-b-2 border-b-emerald-500'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-surface-100'
+                }
+              `}
+            >
+              <Cable size={13} className="mr-1" /> Wires
+            </button>
+            <button
+              onClick={() => setActiveRightTab('monitor')}
+              className={`
+                flex items-center justify-center flex-1 h-full
+                text-[10px] font-semibold tracking-wide uppercase transition-colors
+                ${activeRightTab === 'monitor'
+                  ? 'bg-surface-DEFAULT text-purple-400 border-b-2 border-b-purple-500'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-surface-100'
+                }
+              `}
+            >
+              <Terminal size={13} className="mr-1" /> Monitor
+            </button>
           </div>
 
-          <div className="border-t border-panel-border" />
-
-          {/* Active Connections Panel */}
-          <div className="h-44 flex flex-col shrink-0">
-            <ActiveConnectionsPanel />
-          </div>
-
-          <div className="border-t border-panel-border" />
-
-          <div className="h-44 flex flex-col shrink-0">
-            <SerialMonitor />
+          <div className="flex-1 min-h-0 bg-[#162035] relative">
+            <div className={`absolute inset-0 flex flex-col ${activeRightTab === 'code' ? 'block' : 'hidden'}`}>
+              <MonacoEditorPanel />
+            </div>
+            <div className={`absolute inset-0 flex flex-col ${activeRightTab === 'connections' ? 'block' : 'hidden'}`}>
+              <ActiveConnectionsPanel />
+            </div>
+            <div className={`absolute inset-0 flex flex-col ${activeRightTab === 'monitor' ? 'block' : 'hidden'}`}>
+              <SerialMonitor />
+            </div>
           </div>
         </aside>
       </main>

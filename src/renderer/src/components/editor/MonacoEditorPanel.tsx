@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor'
 import { useAppStore } from '@renderer/store/useAppStore'
 import { AlertTriangle, Code2 } from 'lucide-react'
 
+// @ts-ignore
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 
 // Configure @monaco-editor/react to use local monaco-editor package instead of CDN
