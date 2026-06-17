@@ -464,16 +464,29 @@ export function registerCustomBlocks(): void {
     }
   }
 
-  // Touch Sensor
+  // Touch Sensor - Boolean (Touched?)
   Blockly.Blocks['input_touch_read'] = {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
         .appendField('Touch Sensor')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('touch')), 'PIN')
-        .appendField('Touched?')
+        .appendField('<')
+        .appendField(new Blockly.FieldNumber(30), 'THRESHOLD')
       this.setOutput(true, 'Boolean')
       this.setStyle('input_blocks')
-      this.setTooltip('Returns true if the touch pad is pressed.')
+      this.setTooltip('Returns true if the touch pad is pressed (touchRead < threshold). Only works on TOUCH-capable pins: GPIO4, GPIO2, GPIO12-15, GPIO27, GPIO32, GPIO33.')
+    }
+  }
+
+  // Touch Sensor - Raw Value (for calibration)
+  Blockly.Blocks['input_touch_raw'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('Touch Raw Value')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('touch')), 'PIN')
+      this.setOutput(true, 'Number')
+      this.setStyle('input_blocks')
+      this.setTooltip('Returns the raw capacitive value from touchRead(). Lower values mean touch is detected. Use this to calibrate your threshold.')
     }
   }
 
@@ -537,6 +550,18 @@ export function registerCustomBlocks(): void {
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('output_blocks')
+    }
+  }
+
+  Blockly.Blocks['serial_print'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('TEXT')
+        .setCheck(null)
+        .appendField('Serial Print')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Prints data to the Serial Monitor. Make sure to open the Monitor after uploading!')
     }
   }
 

@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // EduBlocks Studio Design System
+        // MY STREAM LAB Design System
         primary: {
           50:  '#eff6ff',
           100: '#dbeafe',
@@ -22,14 +22,28 @@ export default {
           900: '#1e3a8a',
         },
         surface: {
-          DEFAULT: '#0f172a',
-          50:  '#1e293b',
-          100: '#1a2540',
-          200: '#162035',
+          DEFAULT: '#ffffff',
+          50:  '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
         },
         panel: {
-          DEFAULT: '#1e293b',
-          border: '#2d3f5e',
+          DEFAULT: '#ffffff',
+          border: '#e4e4e7',
+        },
+        slate: {
+          50: '#0f172a',
+          100: '#1e293b',
+          200: '#334155',
+          300: '#475569',
+          400: '#64748b',
+          500: '#94a3b8',
+          600: '#cbd5e1',
+          700: '#e2e8f0',
+          800: '#f1f5f9',
+          900: '#f8fafc',
         }
       },
       fontFamily: {

@@ -25,7 +25,8 @@
       "interfaces": [
         "DIGITAL_IN",
         "DIGITAL_OUT",
-        "ANALOG_IN"
+        "ANALOG_IN",
+        "TOUCH"
       ]
     },
     "GPIO33": {
@@ -35,7 +36,8 @@
       "interfaces": [
         "DIGITAL_IN",
         "DIGITAL_OUT",
-        "ANALOG_IN"
+        "ANALOG_IN",
+        "TOUCH"
       ]
     },
     "GPIO25": {
@@ -164,21 +166,77 @@
       "interfaces": [
         "DIGITAL_IN",
         "DIGITAL_OUT",
-        "PWM"
+        "PWM",
+        "TOUCH"
+      ]
+    },
+    "GPIO14": {
+      "name": "GPIO14",
+      "label": "GPIO 14",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "TOUCH"
+      ]
+    },
+    "GPIO15": {
+      "name": "GPIO15",
+      "label": "GPIO 15",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "TOUCH"
+      ]
+    },
+    "GPIO4": {
+      "name": "GPIO4",
+      "label": "GPIO 4",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "TOUCH"
+      ]
+    },
+    "GPIO2": {
+      "name": "GPIO2",
+      "label": "GPIO 2 (Builtin LED)",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "TOUCH"
+      ]
+    },
+    "GPIO12": {
+      "name": "GPIO12",
+      "label": "GPIO 12",
+      "inputOnly": false,
+      "interfaces": [
+        "DIGITAL_IN",
+        "DIGITAL_OUT",
+        "PWM",
+        "TOUCH"
       ]
     }
   },
   "peripherals": {
     "ir_sensor": {
       "type": "input",
-      "preferredPin": "GPIO34",
+      "preferredPin": "GPIO35",
       "compat": [
         "DIGITAL_IN"
       ]
     },
     "ldr": {
       "type": "input",
-      "preferredPin": "GPIO35",
+      "preferredPin": "GPIO34",
       "compat": [
         "ANALOG_IN"
       ]
@@ -193,16 +251,27 @@
     "joystick": {
       "type": "analog",
       "preferredPin": {
-        "vrx": "GPIO34",
-        "vry": "GPIO35"
+        "vrx": "GPIO4",
+        "vry": "GPIO2"
       },
       "compat": [
         "ANALOG_IN"
       ]
     },
+    "ultrasonic": {
+      "type": "dual",
+      "preferredPin": {
+        "trig": "GPIO33",
+        "echo": "GPIO32"
+      },
+      "compat": [
+        "DIGITAL_OUT",
+        "DIGITAL_IN"
+      ]
+    },
     "touch": {
       "type": "input",
-      "preferredPin": "GPIO27",
+      "preferredPin": "GPIO12",
       "compat": [
         "TOUCH"
       ]
@@ -210,8 +279,8 @@
     "oled": {
       "type": "i2c",
       "preferredPin": {
-        "sda": "GPIO21",
-        "scl": "GPIO22"
+        "sda": "GPIO13",
+        "scl": "GPIO15"
       },
       "compat": [
         "I2C_SDA",
@@ -220,40 +289,67 @@
     },
     "servo": {
       "type": "output",
-      "preferredPin": "GPIO13",
+      "preferredPin": "GPIO27",
       "compat": [
         "PWM"
       ]
     },
-    "motor_1": {
+    "dcmotor": {
       "type": "motor",
-      "preferredPin": [
-        "GPIO16",
-        "GPIO17",
-        "GPIO18",
-        "GPIO19"
-      ],
+      "preferredPin": {
+        "in1": "GPIO19",
+        "in2": "GPIO18"
+      },
       "compat": [
         "DIGITAL_OUT"
       ]
     },
-    "motor_2": {
+    "dcmotor_2": {
       "type": "motor",
-      "preferredPin": [
-        "GPIO21",
-        "GPIO22",
-        "GPIO23",
-        "GPIO5"
-      ],
+      "preferredPin": {
+        "in1": "GPIO5",
+        "in2": "GPIO17"
+      },
       "compat": [
         "DIGITAL_OUT"
+      ]
+    },
+    "dcmotor_3": {
+      "type": "motor",
+      "preferredPin": {
+        "in1": "GPIO23",
+        "in2": "GPIO22"
+      },
+      "compat": [
+        "DIGITAL_OUT"
+      ]
+    },
+    "dcmotor_4": {
+      "type": "motor",
+      "preferredPin": {
+        "in1": "GPIO21",
+        "in2": "GPIO16"
+      },
+      "compat": [
+        "DIGITAL_OUT"
+      ]
+    },
+
+    "joystick_2": {
+      "type": "analog",
+      "preferredPin": {
+        "vrx": "GPIO26",
+        "vry": "GPIO25"
+      },
+      "compat": [
+        "ANALOG_IN"
       ]
     },
     "color_sensor": {
       "type": "i2c",
       "preferredPin": {
-        "sda": "GPIO21",
-        "scl": "GPIO22"
+        "sda": "GPIO13",
+        "scl": "GPIO15"
       },
       "compat": [
         "I2C_SDA",

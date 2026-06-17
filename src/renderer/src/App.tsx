@@ -2,6 +2,7 @@ import React from 'react'
 import { AppLayout } from '@renderer/views/AppLayout'
 import { useAppStore } from '@renderer/store/useAppStore'
 import type { AppState, AppActions } from '@renderer/store/useAppStore'
+import logoUrl from './assets/logo.jpeg'
 
 /**
  * App root component.
@@ -35,12 +36,8 @@ export const App: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-surface-DEFAULT">
         <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-900/50">
-            <svg viewBox="0 0 24 24" className="w-9 h-9 text-white fill-current">
-              <path d="M12 2a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-slate-100 tracking-tight">EduBlocks Studio</h1>
+          <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover shadow-lg" />
+          <h1 className="text-xl font-bold text-slate-100 tracking-tight uppercase">MY STREAM LAB</h1>
           <p className="text-sm text-slate-500 mt-1">Starting up…</p>
         </div>
       </div>

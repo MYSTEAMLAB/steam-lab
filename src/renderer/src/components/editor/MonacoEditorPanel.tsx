@@ -22,10 +22,10 @@ export const MonacoEditorPanel: React.FC = () => {
   const warnings = useAppStore(s => s.warnings)
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full bg-surface-DEFAULT">
       
       {/* Editor Header */}
-      <div className="flex items-center gap-1.5 px-3 h-8 shrink-0 border-b border-[#2d2d2d] bg-[#252526]">
+      <div className="flex items-center gap-1.5 px-3 h-8 shrink-0 border-b border-panel-border bg-surface-100">
         <span className="text-slate-400"><Code2 size={13} /></span>
         <span className="text-xs font-semibold text-slate-300 tracking-wide uppercase">Generated Code</span>
       </div>
@@ -47,7 +47,7 @@ export const MonacoEditorPanel: React.FC = () => {
         <Editor
           height="100%"
           defaultLanguage="cpp"
-          theme="vs-dark"
+          theme="light"
           value={generatedCode}
           options={{
             readOnly: true,

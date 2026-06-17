@@ -32,8 +32,8 @@ export const BoardPreviewWidget: React.FC<BoardPreviewWidgetProps> = ({ board })
       >
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:16px_16px] opacity-20 pointer-events-none" />
 
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[10px] text-emerald-400 font-medium">
-          <CheckCircle2 size={10} className="text-emerald-400" />
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-[10px] text-emerald-700 font-bold tracking-wide">
+          <CheckCircle2 size={10} className="text-emerald-600" />
           <span>Active</span>
         </div>
 

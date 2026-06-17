@@ -18,3 +18,8 @@ declare module '*?worker' {
   export default workerConstructor
 }
 
+declare module '*.jpeg' {
+  const src: string
+  export default src
+}
+

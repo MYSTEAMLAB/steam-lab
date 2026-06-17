@@ -29,7 +29,7 @@ function createWindow(): void {
     frame: true,
     titleBarStyle: 'default',
     backgroundColor: '#0f172a',
-    title: 'EduBlocks Studio',
+    title: 'MY STREAM LAB',
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       // ── Security configuration ──────────────────────────────────────────
@@ -95,8 +95,13 @@ function createWindow(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 // App lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
+import { setupApplicationMenu } from './menu';
+import { registerProjectHandlers } from './ipc/projectHandlers';
+
 app.whenReady().then(() => {
+  setupApplicationMenu();
   // Register IPC handlers **before** the window opens
+  registerProjectHandlers();
   registerBoardHandlers(ipcMain);
   registerCompilerHandlers();
   registerSerialHandlers();

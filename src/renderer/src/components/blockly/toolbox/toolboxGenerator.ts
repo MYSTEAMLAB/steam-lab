@@ -98,6 +98,7 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'input_temp_is_hot' },
         { kind: 'block', type: 'input_ultrasonic_read' },
         { kind: 'block', type: 'input_touch_read' },
+        { kind: 'block', type: 'input_touch_raw' },
         { kind: 'block', type: 'input_color_read' }
       ]
     },
@@ -119,6 +120,8 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
       name: 'Communication',
       categorystyle: 'wifi_category',
       contents: [
+        { kind: 'label', text: 'Serial' },
+        { kind: 'block', type: 'serial_print' },
         { kind: 'label', text: 'Bluetooth' },
         { kind: 'block', type: 'bluetooth_begin' },
         { kind: 'block', type: 'bluetooth_send' },

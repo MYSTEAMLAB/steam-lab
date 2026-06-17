@@ -136,7 +136,7 @@ export const HardwareCanvas: React.FC = () => {
   }
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#0a0f18] overflow-hidden select-none">
+    <div className="absolute inset-0 w-full h-full bg-surface-DEFAULT overflow-hidden select-none">
       <svg
         ref={svgRef}
         className="w-full h-full touch-none"

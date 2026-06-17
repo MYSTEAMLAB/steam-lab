@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Play, UploadCloud, Usb, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { Play, UploadCloud, Usb, Loader2, AlertCircle, RefreshCw, Terminal } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 
 export const Toolbar: React.FC = () => {
@@ -11,6 +11,7 @@ export const Toolbar: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [isCompiledSuccessfully, setIsCompiledSuccessfully] = useState(false)
   const [statusText, setStatusText] = useState('Ready')
+  const [isSerialConnected, setIsSerialConnected] = useState(false)
 
   // Reset compile state if the generated code changes
   useEffect(() => {
@@ -28,8 +29,14 @@ export const Toolbar: React.FC = () => {
       if ((window as any).api?.serial) {
         const p = await (window as any).api.serial.getPorts()
         setPorts(p)
-        if (p.length > 0 && !selectedPort) {
-          setSelectedPort(p[0].path)
+        if (p.length > 0) {
+          // Check if current selected port still exists
+          const currentPortExists = p.some((port: any) => port.path === selectedPort)
+          if (!selectedPort || !currentPortExists) {
+            setSelectedPort(p[0].path)
+          }
+        } else {
+          setSelectedPort('')
         }
       }
     } catch (e) {
@@ -40,6 +47,28 @@ export const Toolbar: React.FC = () => {
   useEffect(() => {
     fetchPorts()
   }, [])
+
+  const handleConnectToggle = async () => {
+    if (!selectedPort) return
+    try {
+      if (isSerialConnected) {
+        await (window as any).api.serial.close()
+        setIsSerialConnected(false)
+        setStatusText('Serial Disconnected')
+      } else {
+        const result = await (window as any).api.serial.open(selectedPort, 115200)
+        if (result.success) {
+          setIsSerialConnected(true)
+          setStatusText('Serial Connected')
+          setActiveRightTab('monitor')
+        } else {
+          setStatusText('Serial Connect Failed')
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const handleCompile = async () => {
     if (!selectedBoard || !generatedCode) return
@@ -70,11 +99,41 @@ export const Toolbar: React.FC = () => {
     }
     setIsUploading(true)
     setStatusText(`Uploading to ${selectedPort}...`)
+    setIsSerialConnected(false)
     try {
+      // Release COM port lock before upload
+      await (window as any).api.serial.close()
+      
+      // Wait for Windows COM subsystem to fully release the hardware lock
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       // Re-compile and upload
       const result = await (window as any).api.compiler.upload(generatedCode, selectedBoard.fqbn, selectedPort)
       if (result.success) {
         setStatusText('Upload Successful!')
+        // Auto-reconnect serial monitor after upload to view runtime logs
+        try {
+          // Give ESP32 time to complete its hard reset via DTR/RTS
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          
+          let openResult = await (window as any).api.serial.open(selectedPort, 115200)
+          let retries = 0
+          while (!openResult.success && retries < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            openResult = await (window as any).api.serial.open(selectedPort, 115200)
+            retries++
+          }
+          
+          if (openResult.success) {
+            setStatusText('Upload OK, Serial Connected')
+            setIsSerialConnected(true)
+          } else {
+            console.error('Failed to auto-reconnect serial:', openResult.error)
+            setStatusText('Upload OK, Serial Failed')
+          }
+        } catch (err) {
+          console.warn('Failed to auto-reconnect serial after upload:', err)
+        }
       } else {
         setStatusText('Upload Failed (See Monitor)')
       }
@@ -103,9 +162,9 @@ export const Toolbar: React.FC = () => {
           onClick={handleUpload}
           disabled={isCompiling || isUploading || !selectedBoard || !selectedPort || !isCompiledSuccessfully}
           title={!selectedPort ? 'No serial port selected' : !isCompiledSuccessfully ? 'Compilation required before upload' : 'Upload to board'}
-          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-100 rounded transition-colors text-sm font-medium shadow-sm"
+          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-800 rounded transition-colors text-sm font-medium shadow-sm"
         >
-          {isUploading ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <UploadCloud size={16} className="text-emerald-400" />}
+          {isUploading ? <Loader2 size={16} className="animate-spin text-emerald-600" /> : <UploadCloud size={16} className="text-emerald-600" />}
           Upload
         </button>
 
@@ -133,6 +192,20 @@ export const Toolbar: React.FC = () => {
             <RefreshCw size={14} />
           </button>
         </div>
+
+        {/* Connect Monitor Button */}
+        <button
+          onClick={handleConnectToggle}
+          disabled={!selectedPort || isUploading || isCompiling}
+          className={`flex items-center gap-2 px-3 py-1.5 border disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors text-sm font-medium shadow-sm ${
+            isSerialConnected 
+              ? 'bg-blue-600/20 hover:bg-blue-600/30 border-blue-500/30 text-blue-100' 
+              : 'bg-surface-200 hover:bg-surface-300 border-panel-border text-slate-200'
+          }`}
+        >
+          <Terminal size={16} className={isSerialConnected ? "text-blue-400" : "text-slate-400"} />
+          {isSerialConnected ? 'Disconnect' : 'Connect'}
+        </button>
       </div>
 
       <div className="flex items-center gap-2 text-xs font-mono">

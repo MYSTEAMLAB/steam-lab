@@ -61,12 +61,11 @@ export const customTheme = Blockly.Theme.defineTheme('scratch-dark', {
     system_category: { colour: '#FF661A' }
   },
   componentStyles: {
-    // Compliments the dark mode theme tokens in our design system
-    workspaceBackgroundColour: '#162035', // Match tailwind bg-surface-200
-    toolboxBackgroundColour: '#0f172a',    // Match tailwind bg-surface-DEFAULT
-    flyoutBackgroundColour: '#1e293b',     // Match tailwind bg-surface-50
-    flyoutForegroundColour: '#cbd5e1',           // text-slate-300
-    scrollbarColour: '#2d3f5e',            // Match our panel-border
+    workspaceBackgroundColour: '#ffffff',
+    toolboxBackgroundColour: '#ffffff',
+    flyoutBackgroundColour: '#fafafa',
+    flyoutForegroundColour: '#334155',
+    scrollbarColour: '#e4e4e7',
     insertionMarkerColour: '#a855f7',
     insertionMarkerOpacity: 0.3
   }

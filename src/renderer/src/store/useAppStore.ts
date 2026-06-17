@@ -58,6 +58,10 @@ export interface AppState {
     defaultValue: string
     callback: ((value: string | null) => void) | null
   } | null
+
+  // ── Project Feedback ──────────────────────────────────────────────────────
+  /** Status message for save operations */
+  saveStatus: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,9 +107,11 @@ export interface AppActions {
 
   // Dialogs
   setPromptConfig: (config: AppState['promptConfig']) => void
+  setSaveStatus: (status: string | null) => void
 
   // Full reset (e.g., "New Project")
   resetProject: () => void
+  loadProject: (data: any) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,6 +133,7 @@ const initialState: AppState = {
   generatedCode: '',
   warnings: [],
   promptConfig: null,
+  saveStatus: null,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -410,6 +417,9 @@ export const useAppStore = create<AppState & AppActions>()(
       setPromptConfig: (config) =>
         set({ promptConfig: config }),
 
+      setSaveStatus: (status) =>
+        set({ saveStatus: status }),
+
       // ── Full reset ───────────────────────────────────────────────────────
       resetProject: () =>
         set({
@@ -424,6 +434,23 @@ export const useAppStore = create<AppState & AppActions>()(
           generatedCode: '',
           warnings: [],
         }),
+
+      loadProject: (data) =>
+        set((state) => {
+          let selectedBoard = state.selectedBoard;
+          if (data.selectedBoard) {
+            const foundBoard = state.availableBoards.find(b => b.id === data.selectedBoard.id);
+            if (foundBoard) selectedBoard = foundBoard;
+          }
+          return {
+            projectName: data.projectName || 'Untitled Project',
+            savedFilePath: data.savedFilePath || null,
+            blocklyWorkspaceJson: data.blocklyWorkspaceJson || null,
+            boardLayouts: data.boardLayouts || {},
+            selectedBoard,
+            isDirty: false
+          };
+        }),
     }),
     {
       name: 'edublocks-app-state',
@@ -434,6 +461,9 @@ export const useAppStore = create<AppState & AppActions>()(
         blocklyWorkspaceJson: state.blocklyWorkspaceJson,
         boardLayouts: state.boardLayouts,
         generatedCode: state.generatedCode,
+        projectName: state.projectName,
+        savedFilePath: state.savedFilePath,
+        isDirty: state.isDirty,
       }),
     }
   )

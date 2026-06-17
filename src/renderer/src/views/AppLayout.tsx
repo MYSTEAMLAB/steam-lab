@@ -14,6 +14,10 @@ import { useAppStore, selectSelectedBoard, selectIsDirty } from '@renderer/store
 import { Toolbar } from '@renderer/components/Toolbar'
 import { ToolchainInstaller } from '@renderer/components/ToolchainInstaller'
 import { SerialMonitor } from '@renderer/components/hardware/SerialMonitor'
+import { useProjectManager } from '@renderer/hooks/useProjectManager'
+
+// @ts-ignore
+import logoUrl from '../assets/logo.jpeg'
 
 export const AppLayout: React.FC = () => {
   const selectedBoard = useAppStore(selectSelectedBoard)
@@ -23,6 +27,10 @@ export const AppLayout: React.FC = () => {
   const setActiveTab = useAppStore(s => s.setActiveTab)
   const activeRightTab = useAppStore(s => s.activeRightTab)
   const setActiveRightTab = useAppStore(s => s.setActiveRightTab)
+  const saveStatus = useAppStore(s => s.saveStatus)
+
+  // Initialize Project Manager
+  useProjectManager()
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-DEFAULT text-slate-200 select-none">
@@ -47,11 +55,9 @@ export const AppLayout: React.FC = () => {
         {/* Left: Logo + project name */}
         <div className="flex items-center gap-3 app-no-drag">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-              <Cpu size={13} className="text-white" />
-            </div>
-            <span className="text-sm font-bold text-slate-100 tracking-tight">
-              EduBlocks Studio
+            <img src={logoUrl} alt="Logo" className="w-8 h-8 rounded-md object-cover" />
+            <span className="text-sm font-bold text-slate-100 tracking-tight uppercase">
+              MY STREAM LAB
             </span>
           </div>
 
@@ -61,6 +67,11 @@ export const AppLayout: React.FC = () => {
             {projectName}
             {isDirty && <span className="ml-1 text-primary-400">•</span>}
           </span>
+          {saveStatus && (
+            <span className="text-xs text-primary-500 font-medium ml-2 animate-pulse">
+              {saveStatus}
+            </span>
+          )}
         </div>
 
         {/* Center: Board Selector */}
@@ -142,7 +153,7 @@ export const AppLayout: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 relative overflow-hidden bg-[#162035]">
+          <div className="flex-1 min-h-0 relative overflow-hidden bg-surface-50">
             {/* We render both but hide the inactive one to preserve Blockly state when switching tabs */}
             <div className={`absolute inset-0 ${activeTab === 'blocks' ? 'block' : 'hidden'}`}>
               <BlocklyWorkspace key={selectedBoard?.id} />
@@ -205,7 +216,7 @@ export const AppLayout: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 bg-[#162035] relative">
+          <div className="flex-1 min-h-0 bg-surface-50 relative">
             <div className={`absolute inset-0 flex flex-col ${activeRightTab === 'code' ? 'block' : 'hidden'}`}>
               <MonacoEditorPanel />
             </div>
@@ -232,7 +243,7 @@ export const AppLayout: React.FC = () => {
         <span>
           Board: <span className="text-primary-400">{selectedBoard?.name ?? '—'}</span>
         </span>
-        <span className="text-slate-700">EduBlocks Studio</span>
+        <span className="text-slate-700 font-bold uppercase">MY STREAM LAB</span>
         <span>Ready</span>
       </footer>
     </div>

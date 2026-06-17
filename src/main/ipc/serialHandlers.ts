@@ -67,11 +67,21 @@ export function registerSerialHandlers() {
           currentPort = null;
         }
 
-        currentPort = new SerialPort({ path, baudRate }, (err) => {
+        currentPort = new SerialPort({ path, baudRate, autoOpen: false });
+        currentPort.open((err) => {
           if (err) {
             resolve({ success: false, error: err.message });
           } else {
-            resolve({ success: true });
+            // For ESP32: pulse DTR/RTS to explicitly reboot the board (Arduino IDE behavior).
+            // This ensures we catch early setup() logs and don't hold the board in reset.
+            currentPort?.set({ dtr: false, rts: true }, () => {
+              setTimeout(() => {
+                currentPort?.set({ dtr: false, rts: false }, (errSet) => {
+                  if (errSet) console.warn('Failed to set DTR/RTS:', errSet);
+                  resolve({ success: true });
+                });
+              }, 50);
+            });
           }
         });
 

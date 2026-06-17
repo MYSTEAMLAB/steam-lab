@@ -61,8 +61,8 @@ export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = 
   },
   touch: {
     type: 'Touch Input',
-    requiredInterfaces: ['ANALOG_IN'], // Using Analog In as fallback for touch if TOUCH isn't strictly defined
-    description: 'Requires a touch-capable or analog input pin'
+    requiredInterfaces: ['TOUCH', 'DIGITAL_IN'],
+    description: 'Requires a capacitive touch-capable pin (ESP32: GPIO0, GPIO2, GPIO4, GPIO12-GPIO15, GPIO27, GPIO32, GPIO33)'
   },
   dht11: {
     type: 'Digital Sensor',
@@ -81,12 +81,11 @@ export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = 
   dcmotor: {
     type: 'DC Motor',
     requiredInterfaces: {
-      pwm: ['PWM'],
       in1: ['DIGITAL_OUT'],
       in2: ['DIGITAL_OUT']
     },
     mustNotBeInputOnly: true,
-    description: 'Requires PWM and two digital direction pins'
+    description: 'Requires two digital direction/PWM pins'
   },
   motor_driver: {
     type: '4 Motor Driver',
@@ -261,6 +260,73 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
     }
   }
 
+  // ── Try preferredPin from pinmap first ────────────────────────────────────
+  let peripheral = pinMap.peripherals?.[deviceType]
+  
+  // If the base peripheral's preferred pins are fully occupied, check for _2, _3, etc.
+  if (peripheral?.preferredPin) {
+    let baseOccupied = false;
+    if (typeof peripheral.preferredPin === 'string') {
+      if (assignedPins.has(peripheral.preferredPin)) baseOccupied = true;
+    } else if (typeof peripheral.preferredPin === 'object' && !Array.isArray(peripheral.preferredPin)) {
+      for (const p of Object.values(peripheral.preferredPin)) {
+        if (assignedPins.has(p as string)) baseOccupied = true;
+      }
+    }
+    
+    if (baseOccupied) {
+      // Find the next available indexed peripheral (e.g., dcmotor_2)
+      for (let i = 2; i <= 8; i++) {
+        const nextPeriph = pinMap.peripherals?.[`${deviceType}_${i}`]
+        if (nextPeriph?.preferredPin) {
+          let nextOccupied = false;
+          if (typeof nextPeriph.preferredPin === 'string') {
+            if (assignedPins.has(nextPeriph.preferredPin)) nextOccupied = true;
+          } else if (typeof nextPeriph.preferredPin === 'object' && !Array.isArray(nextPeriph.preferredPin)) {
+            for (const p of Object.values(nextPeriph.preferredPin)) {
+              if (assignedPins.has(p as string)) nextOccupied = true;
+            }
+          }
+          if (!nextOccupied) {
+            peripheral = nextPeriph;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (peripheral?.preferredPin) {
+    const preferred = peripheral.preferredPin
+
+    if (Array.isArray(reqs.requiredInterfaces)) {
+      // Single-pin component: try preferred string pin
+      if (typeof preferred === 'string' && !assignedPins.has(preferred)) {
+        const pinDef = pinMap.pins[preferred]
+        if (pinDef) return preferred
+      }
+    } else {
+      // Multi-pin component: try preferred record
+      if (typeof preferred === 'object' && !Array.isArray(preferred)) {
+        const allocation: Record<string, string> = {}
+        const usedInThisPass = new Set<string>()
+        let allFound = true
+        for (const key of Object.keys(reqs.requiredInterfaces)) {
+          const preferredPin = (preferred as Record<string, string>)[key]
+          if (preferredPin && !assignedPins.has(preferredPin) && !usedInThisPass.has(preferredPin) && pinMap.pins[preferredPin]) {
+            allocation[key] = preferredPin
+            usedInThisPass.add(preferredPin)
+          } else {
+            allFound = false
+            break
+          }
+        }
+        if (allFound) return allocation
+      }
+    }
+  }
+  // ── End preferredPin check ─────────────────────────────────────────────────
+
   const availablePins = Object.entries(pinMap.pins)
     .filter(([name]) => !assignedPins.has(name))
 
@@ -314,3 +380,4 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
     return hasAny ? allocation : ''
   }
 }
+

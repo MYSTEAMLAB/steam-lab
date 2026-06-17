@@ -101,6 +101,11 @@ arduinoGenerator.forBlock['system_delay'] = function(block: Blockly.Block) {
   return `delay(${ms});\n`
 }
 
+arduinoGenerator.forBlock['serial_print'] = function(block: Blockly.Block) {
+  const text = arduinoGenerator.valueToCode(block, 'TEXT', 0) || '""'
+  return `Serial.println(${text});\n`
+}
+
 arduinoGenerator.forBlock['output_led_on'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block) || 'LED_BUILTIN'
   return `digitalWrite(${pin}, HIGH);\n`
@@ -248,7 +253,7 @@ arduinoGenerator.forBlock['input_ir_read'] = function(block: Blockly.Block) {
 arduinoGenerator.forBlock['input_touch_read'] = function(block: Blockly.Block) {
   const pin = getDevicePin(getPinFieldValue(block));
   if (!isValidPin(pin)) return ['false', 0];
-  return [`(touchRead(${pin}) < 30)`, 0];
+  return [`(digitalRead(${pin}) == HIGH)`, 0];
 }
 
 arduinoGenerator.forBlock['input_dht_read'] = function(block: Blockly.Block) {
@@ -292,18 +297,17 @@ arduinoGenerator.forBlock['output_dcmotor_set'] = function(block: Blockly.Block)
   const action = block.getFieldValue('ACTION');
   const speed = arduinoGenerator.valueToCode(block, 'SPEED', 0) || '255';
   
-  const pwm = getDevicePin(devId, 'pwm');
   const in1 = getDevicePin(devId, 'in1');
   const in2 = getDevicePin(devId, 'in2');
-  if (!isValidPin(pwm) || !isValidPin(in1) || !isValidPin(in2)) return '';
+  if (!isValidPin(in1) || !isValidPin(in2)) return '';
 
-  let code = `analogWrite(${pwm}, ${speed});\n`;
+  let code = '';
   if (action === 'FWD') {
-    code += `digitalWrite(${in1}, HIGH);\ndigitalWrite(${in2}, LOW);\n`;
+    code += `analogWrite(${in1}, ${speed});\nanalogWrite(${in2}, 0);\n`;
   } else if (action === 'REV') {
-    code += `digitalWrite(${in1}, LOW);\ndigitalWrite(${in2}, HIGH);\n`;
+    code += `analogWrite(${in1}, 0);\nanalogWrite(${in2}, ${speed});\n`;
   } else {
-    code += `digitalWrite(${in1}, LOW);\ndigitalWrite(${in2}, LOW);\n`;
+    code += `analogWrite(${in1}, 0);\nanalogWrite(${in2}, 0);\n`;
   }
   return code;
 }
@@ -594,6 +598,7 @@ export function generateFullArduinoCode(
         const pin = normalizePin(device.mappedPin as string)
         if (reqs.requiredInterfaces.includes('DIGITAL_OUT') || reqs.requiredInterfaces.includes('PWM')) {
           pinModes.push(`  pinMode(${pin}, OUTPUT); // ${device.type}`)
+          pinModes.push(`  digitalWrite(${pin}, LOW); // prevent boot spin`)
         } else if (reqs.requiredInterfaces.includes('DIGITAL_IN') || reqs.requiredInterfaces.includes('ANALOG_IN')) {
           if (device.type === 'button') {
             pinModes.push(`  pinMode(${pin}, INPUT_PULLUP); // ${device.type}`)
@@ -610,6 +615,7 @@ export function generateFullArduinoCode(
           if (!pin) continue
           if (interfaces.includes('DIGITAL_OUT') || interfaces.includes('PWM')) {
             pinModes.push(`  pinMode(${pin}, OUTPUT); // ${device.type} ${key}`)
+            pinModes.push(`  digitalWrite(${pin}, LOW); // prevent boot spin`)
           } else if (interfaces.includes('DIGITAL_IN') || interfaces.includes('ANALOG_IN')) {
             pinModes.push(`  pinMode(${pin}, INPUT); // ${device.type} ${key}`)
           }
@@ -623,28 +629,37 @@ export function generateFullArduinoCode(
           includes.add('#include <Wire.h>')
           includes.add('#include <Adafruit_GFX.h>')
           includes.add('#include <Adafruit_SSD1306.h>')
-          globalVars.push(`Adafruit_SSD1306 display(128, 64, &Wire, -1);`)
-          injectedSetups.push(`  Wire.begin(${normalizePin(pins.sda)}, ${normalizePin(pins.scl)});`)
-          injectedSetups.push(`  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);`)
-          injectedSetups.push(`  display.setTextColor(WHITE);`)
-          injectedSetups.push(`  display.setTextSize(1);`)
-          injectedSetups.push(`  display.clearDisplay();`)
+          const varDisplay = `Adafruit_SSD1306 display(128, 64, &Wire, -1);`
+          if (!globalVars.includes(varDisplay)) {
+            globalVars.push(varDisplay)
+            injectedSetups.push(`  Wire.begin(${normalizePin(pins.sda)}, ${normalizePin(pins.scl)});`)
+            injectedSetups.push(`  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);`)
+            injectedSetups.push(`  display.setTextColor(WHITE);`)
+            injectedSetups.push(`  display.setTextSize(1);`)
+            injectedSetups.push(`  display.clearDisplay();`)
+          }
         }
             } else if (device.type === 'color_sensor') {
         const pins = device.mappedPin as Record<string, string>
         if (isValidPin(pins.sda) && isValidPin(pins.scl)) {
           includes.add('#include <Wire.h>')
           includes.add('#include <Adafruit_TCS34725.h>')
-          globalVars.push(`Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);`)
-          injectedSetups.push(`  Wire.begin(${normalizePin(pins.sda)}, ${normalizePin(pins.scl)});`)
-          injectedSetups.push(`  tcs.begin();`)
+          const varTcs = `Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);`
+          if (!globalVars.includes(varTcs)) {
+            globalVars.push(varTcs)
+            injectedSetups.push(`  Wire.begin(${normalizePin(pins.sda)}, ${normalizePin(pins.scl)});`)
+            injectedSetups.push(`  tcs.begin();`)
+          }
         }
       } else if (device.type === 'bluetooth') {
         const pins = device.mappedPin as Record<string, string>
         if (isValidPin(pins.rx) && isValidPin(pins.tx)) {
           includes.add('#include <HardwareSerial.h>')
-          globalVars.push(`HardwareSerial bt_${device.id}(1);`)
-          injectedSetups.push(`  bt_${device.id}.begin(9600, SERIAL_8N1, ${normalizePin(pins.rx)}, ${normalizePin(pins.tx)});`)
+          const varBt = `HardwareSerial bt_${device.id}(1);`
+          if (!globalVars.includes(varBt)) {
+            globalVars.push(varBt)
+            injectedSetups.push(`  bt_${device.id}.begin(9600, SERIAL_8N1, ${normalizePin(pins.rx)}, ${normalizePin(pins.tx)});`)
+          }
         }
       }
     }
@@ -690,10 +705,10 @@ void analogWrite(uint8_t pin, uint32_t value) {
 
   // Handle default Setup if none exists
   if (!setupCode) {
-    setupCode = `void setup() {\n${pinModes.join('\n')}\n${injectedSetups.join('\n')}\n}\n\n`
+    setupCode = `void setup() {\n  Serial.begin(115200);\n${pinModes.join('\n')}\n${injectedSetups.join('\n')}\n}\n\n`
   } else {
     // Inject pinModes and injected setups into the generated setup() block
-    let injections = ''
+    let injections = '  Serial.begin(115200);\n'
     if (pinModes.length > 0) injections += `${pinModes.join('\n')}\n`
     if (injectedSetups.length > 0) injections += `${injectedSetups.join('\n')}\n`
     
@@ -852,7 +867,7 @@ arduinoGenerator.forBlock['input_joystick1_read'] = function(block: Blockly.Bloc
   if (joys.length < 1 || !joys[0].mappedPin) return ['0', 0];
   const pin = axis === 'VRX' ? joys[0].mappedPin.vrx : joys[0].mappedPin.vry;
   if (!isValidPin(pin)) return ['0', 0];
-  return [`analogRead(${pin})`, 0];
+  return [`analogRead(${normalizePin(pin as string)})`, 0];
 };
 
 arduinoGenerator.forBlock['input_joystick2_read'] = function(block: Blockly.Block) {
@@ -862,7 +877,7 @@ arduinoGenerator.forBlock['input_joystick2_read'] = function(block: Blockly.Bloc
   if (joys.length < 2 || !joys[1].mappedPin) return ['0', 0];
   const pin = axis === 'VRX' ? joys[1].mappedPin.vrx : joys[1].mappedPin.vry;
   if (!isValidPin(pin)) return ['0', 0];
-  return [`analogRead(${pin})`, 0];
+  return [`analogRead(${normalizePin(pin as string)})`, 0];
 };
 arduinoGenerator.forBlock['math_constrain'] = function(block: Blockly.Block) {
   const val = arduinoGenerator.valueToCode(block, 'VALUE', 0) || '0';

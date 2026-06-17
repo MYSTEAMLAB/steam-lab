@@ -51,6 +51,22 @@ const api = {
       ipcRenderer.on('serial:closed', () => callback())
       return () => { ipcRenderer.removeAllListeners('serial:closed') }
     }
+  },
+
+  project: {
+    open: (filePath?: string) => ipcRenderer.invoke('project:open', filePath),
+    save: (path: string, data: any) => ipcRenderer.invoke('project:save', { path, data }),
+    saveAs: (data: any) => ipcRenderer.invoke('project:saveAs', data),
+    exportIno: (code: string, defaultName: string) => ipcRenderer.invoke('project:exportIno', { code, defaultName }),
+    getRecents: () => ipcRenderer.invoke('project:getRecents'),
+    autoSave: (data: any) => ipcRenderer.invoke('project:autoSave', data),
+    checkRecovery: () => ipcRenderer.invoke('project:checkRecovery'),
+    clearRecovery: () => ipcRenderer.invoke('project:clearRecovery'),
+  },
+
+  onMenuAction: (callback: (action: string) => void) => {
+    ipcRenderer.on('menu:action', (_event, action) => callback(action))
+    return () => { ipcRenderer.removeAllListeners('menu:action') }
   }
 }
 

@@ -90,14 +90,24 @@ export function registerCompilerHandlers() {
         const sketchDir = path.join(TEMP_DIR, 'sketch');
         if (!fs.existsSync(sketchDir)) fs.mkdirSync(sketchDir, { recursive: true });
         
+        const buildDir = path.join(TEMP_DIR, 'build');
+        if (!fs.existsSync(buildDir)) fs.mkdirSync(buildDir, { recursive: true });
+
+        // Force rebuild of the sketch by deleting the cached binary
+        try {
+          fs.rmSync(path.join(buildDir, 'sketch.ino.bin'), { force: true });
+          fs.rmSync(path.join(buildDir, 'sketch.ino.elf'), { force: true });
+        } catch(e) {}
+        
         const sketchPath = path.join(sketchDir, 'sketch.ino');
         fs.writeFileSync(sketchPath, code);
 
         event.sender.send('compiler:log', ' ');
         event.sender.send('compiler:log', `==== COMPILATION START ====`);
         event.sender.send('compiler:log', `[Compiler] Compiling for ${fqbn}...`);
+        event.sender.send('compiler:log', `[Debug] Sketch code length: ${code.length} bytes`);
         
-        const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, sketchDir]);
+        const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '--build-path', buildDir, sketchDir]);
         
         let fullLog = '';
 
@@ -133,16 +143,26 @@ export function registerCompilerHandlers() {
     return new Promise<{success: boolean, log: string}>((resolve) => {
       try {
         const sketchDir = path.join(TEMP_DIR, 'sketch');
+        const buildDir = path.join(TEMP_DIR, 'build');
         
-        // Always save fresh code before upload
         if (!fs.existsSync(sketchDir)) fs.mkdirSync(sketchDir, { recursive: true });
+        if (!fs.existsSync(buildDir)) fs.mkdirSync(buildDir, { recursive: true });
+
+        // Force rebuild of the sketch by deleting the cached binary
+        try {
+          fs.rmSync(path.join(buildDir, 'sketch.ino.bin'), { force: true });
+          fs.rmSync(path.join(buildDir, 'sketch.ino.elf'), { force: true });
+        } catch(e) {}
+
+        // Always save fresh code before upload
         fs.writeFileSync(path.join(sketchDir, 'sketch.ino'), code);
 
         event.sender.send('compiler:log', ' ');
         event.sender.send('compiler:log', `==== UPLOAD START ====`);
         event.sender.send('compiler:log', `[Compiler] Uploading to ${port}...`);
+        event.sender.send('compiler:log', `[Debug] Upload sketch code length: ${code.length} bytes`);
         
-        const proc = spawn(CLI_PATH, ['upload', '-b', fqbn, '-p', port, sketchDir]);
+        const proc = spawn(CLI_PATH, ['compile', '--upload', '-b', fqbn, '-p', port, '--build-path', buildDir, sketchDir]);
         
         let fullLog = '';
 

@@ -17,8 +17,8 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -53,7 +53,7 @@ html, body, #root {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2d3f5e;
+  background: #e4e4e7;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -85,8 +85,8 @@ html, body, #root {
 
 /* ── Toolbox ──────────────────────────────────────────────────────────────── */
 .blocklyToolboxDiv {
-  border-right: 1px solid #2d3f5e !important;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  border-right: 1px solid #e4e4e7 !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Flyout Background (SVG path/rect) ────────────────────────────────── */
@@ -96,7 +96,7 @@ html, body, #root {
 }
 
 .blocklyFlyoutBackground {
-  fill: #1e293b !important;
+  fill: #fafafa !important;
   stroke: none !important;
   stroke-width: 0 !important;
   filter: none !important;

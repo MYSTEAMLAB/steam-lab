@@ -68,7 +68,7 @@ export const SerialMonitor: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] font-mono text-[11px] border border-panel-border rounded overflow-hidden">
+    <div className="flex flex-col h-full bg-surface-DEFAULT font-mono text-[11px] border border-panel-border rounded overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-surface-100 border-b border-panel-border shrink-0">
         <div className="flex items-center gap-2 text-slate-400">
@@ -104,15 +104,15 @@ export const SerialMonitor: React.FC = () => {
       </div>
 
       {/* Logs Area */}
-      <div className="flex-1 overflow-y-auto p-2 text-slate-300 leading-relaxed whitespace-pre-wrap font-mono">
+      <div className="flex-1 overflow-y-auto p-2 text-slate-200 leading-relaxed whitespace-pre-wrap font-mono">
         {logs.length === 0 ? (
-          <div className="text-slate-600 italic">No output...</div>
+          <div className="text-slate-400 italic">No output...</div>
         ) : (
           logs.map((log, i) => {
             const isError = log.includes('[Error]') || log.includes('Error') || log.includes('Failed') || log.includes('FAILED')
             const isSystem = log.includes('[Compiler]') || log.includes('[Installer]') || log.includes('====')
             return (
-              <div key={i} className={isError ? 'text-red-400' : isSystem ? 'text-blue-400 font-bold' : ''}>
+              <div key={i} className={isError ? 'text-red-600' : isSystem ? 'text-blue-600 font-bold' : ''}>
                 {log}
               </div>
             )
@@ -130,7 +130,7 @@ export const SerialMonitor: React.FC = () => {
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Send serial command..."
-          className="flex-1 bg-transparent border-none text-slate-200 focus:ring-0 outline-none px-1"
+          className="flex-1 bg-transparent border-none text-slate-100 focus:ring-0 outline-none px-1"
         />
         <button
           onClick={handleSend}
