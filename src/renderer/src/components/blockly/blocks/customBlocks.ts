@@ -470,11 +470,10 @@ export function registerCustomBlocks(): void {
       this.appendDummyInput()
         .appendField('Touch Sensor')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('touch')), 'PIN')
-        .appendField('<')
-        .appendField(new Blockly.FieldNumber(30), 'THRESHOLD')
+        .appendField('is Pressed?')
       this.setOutput(true, 'Boolean')
       this.setStyle('input_blocks')
-      this.setTooltip('Returns true if the touch pad is pressed (touchRead < threshold). Only works on TOUCH-capable pins: GPIO4, GPIO2, GPIO12-15, GPIO27, GPIO32, GPIO33.')
+      this.setTooltip('Returns true if the digital touch pad is pressed.')
     }
   }
 
@@ -584,7 +583,7 @@ export function registerCustomBlocks(): void {
         .appendField('OLED Draw Text')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('oled')), 'PIN')
       this.appendValueInput('TEXT')
-        .setCheck('String')
+        .setCheck(null)
         .appendField('Text')
       this.appendValueInput('X')
         .setCheck('Number')
@@ -621,7 +620,7 @@ export function registerCustomBlocks(): void {
         .appendField('OLED Display')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('oled')), 'PIN')
       this.appendValueInput('TEXT')
-        .setCheck('String')
+        .setCheck(null)
         .appendField('Print')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
