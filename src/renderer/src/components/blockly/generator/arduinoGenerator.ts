@@ -245,19 +245,25 @@ arduinoGenerator.forBlock['wifi_connect'] = function(block: Blockly.Block) {
 // ── New Phase 4 Input Blocks ──────────────────────────────────────────────
 
 arduinoGenerator.forBlock['input_ir_read'] = function(block: Blockly.Block) {
-  const pin = getDevicePin(getPinFieldValue(block));
+  const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['0', 0];
   return [`digitalRead(${pin})`, 0];
 }
 
 arduinoGenerator.forBlock['input_touch_read'] = function(block: Blockly.Block) {
-  const pin = getDevicePin(getPinFieldValue(block));
+  const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['false', 0];
   return [`(digitalRead(${pin}) == HIGH)`, 0];
 }
 
+arduinoGenerator.forBlock['input_touch_raw'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block);
+  if (!isValidPin(pin)) return ['0', 0];
+  return [`touchRead(${pin})`, 0];
+}
+
 arduinoGenerator.forBlock['input_dht_read'] = function(block: Blockly.Block) {
-  const pin = getDevicePin(getPinFieldValue(block));
+  const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['0.0', 0];
   const type = block.getFieldValue('TYPE');
   const varName = `dht_${pin}`;
