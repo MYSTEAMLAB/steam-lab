@@ -2,6 +2,7 @@ import React from 'react'
 import { AppLayout } from '@renderer/views/AppLayout'
 import { useAppStore } from '@renderer/store/useAppStore'
 import type { AppState, AppActions } from '@renderer/store/useAppStore'
+// @ts-ignore
 import logoUrl from './assets/logo.jpeg'
 
 /**

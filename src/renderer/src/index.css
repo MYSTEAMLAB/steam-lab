@@ -123,24 +123,29 @@ html, body, #root {
 /* ── Scrollbar Handles (thumbs) ───────────────────────────────────────── */
 /* Make main workspace scrollbar thin and subtle */
 .blocklyScrollbarHandle {
-  fill: #2d3f5e !important;
-  rx: 3 !important;
+  fill: #cbd5e1 !important;
+  rx: 4 !important;
   opacity: 0.5 !important;
   transition: fill 0.15s ease, opacity 0.15s ease;
 }
 
 .blocklyScrollbarHandle:hover {
-  fill: #3b82f6 !important;
-  opacity: 1 !important;
+  fill: #94a3b8 !important;
+  opacity: 0.8 !important;
+}
+
+.blocklyScrollbarBackground {
+  fill: transparent !important;
+  opacity: 0 !important;
 }
 
 /* Reduce width of the entire vertical scrollbar group */
 .blocklyScrollbarVertical {
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 .blocklyScrollbarHorizontal {
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 /* ── Zoom / Trashcan controls ─────────────────────────────────────────── */

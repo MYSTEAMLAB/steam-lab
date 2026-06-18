@@ -53,8 +53,31 @@ export const SerialMonitor: React.FC = () => {
     }
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(logs.join('\n'))
+  const handleCopy = async () => {
+    const textToCopy = logs.join('\n');
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        throw new Error("Clipboard API not available");
+      }
+    } catch (err) {
+      console.warn('Clipboard writeText failed, using fallback', err);
+      const textArea = document.createElement("textarea");
+      textArea.value = textToCopy;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
   }
 
   const handleExport = () => {
