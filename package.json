@@ -1,11 +1,11 @@
 {
-  "name": "edublocks-studio",
+  "name": "my-stream-lab",
   "version": "1.0.0",
   "type": "module",
-  "description": "EduBlocks Studio - Visual ESP32/Arduino IDE for Students",
+  "description": "MY STREAM LAB - Visual ESP32/Arduino IDE for Students",
   "main": "./out/main/index.js",
-  "homepage": "https://edublocks.studio",
-  "author": "EduBlocks Team",
+  "homepage": "https://mystreamlab.in",
+  "author": "MY STREAM LAB",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",

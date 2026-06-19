@@ -55,7 +55,9 @@ export const AppLayout: React.FC = () => {
         {/* Left: Logo + project name */}
         <div className="flex items-center gap-3 app-no-drag">
           <div className="flex items-center gap-2">
-            <img src={logoUrl} alt="Logo" className="w-8 h-8 rounded-md object-cover" />
+            <div className="flex items-center justify-center bg-white rounded-md p-0.5">
+              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
+            </div>
             <span className="text-sm font-bold text-slate-100 tracking-tight uppercase">
               MY STREAM LAB
             </span>
