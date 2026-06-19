@@ -62,6 +62,8 @@ export interface AppState {
   // ── Project Feedback ──────────────────────────────────────────────────────
   /** Status message for save operations */
   saveStatus: string | null
+  /** Timestamp updated when a project is explicitly loaded to force Blockly resync */
+  projectLoadTimestamp: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,6 +136,7 @@ const initialState: AppState = {
   warnings: [],
   promptConfig: null,
   saveStatus: null,
+  projectLoadTimestamp: 0,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -433,6 +436,7 @@ export const useAppStore = create<AppState & AppActions>()(
           blocklyWorkspaceJson: null,
           generatedCode: '',
           warnings: [],
+          projectLoadTimestamp: Date.now(),
         }),
 
       loadProject: (data) =>
@@ -448,7 +452,8 @@ export const useAppStore = create<AppState & AppActions>()(
             blocklyWorkspaceJson: data.blocklyWorkspaceJson || null,
             boardLayouts: data.boardLayouts || {},
             selectedBoard,
-            isDirty: false
+            isDirty: false,
+            projectLoadTimestamp: Date.now()
           };
         }),
     }),

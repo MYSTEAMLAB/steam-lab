@@ -21,6 +21,7 @@ export const BlocklyWorkspace: React.FC = () => {
   const blocklyWorkspaceJson = useAppStore(s => s.blocklyWorkspaceJson)
   const setBlocklyWorkspaceJson = useAppStore(s => s.setBlocklyWorkspaceJson)
   const setPromptConfig = useAppStore(s => s.setPromptConfig)
+  const projectLoadTimestamp = useAppStore(s => s.projectLoadTimestamp)
 
   const placedDevices = selectedBoard ? (boardLayouts[selectedBoard.id]?.devices || []) : []
 
@@ -138,6 +139,7 @@ export const BlocklyWorkspace: React.FC = () => {
       loopBlock.render()
     }
 
+
     let saveTimeoutId: NodeJS.Timeout | null = null
 
     const handleWorkspaceChange = (event: Blockly.Events.Abstract): void => {
@@ -223,6 +225,28 @@ export const BlocklyWorkspace: React.FC = () => {
       workspaceRef.current.updateToolbox(toolbox as any)
     }
   }, [placedDevices, selectedBoard])
+
+  // ── Handle External Project Loads ─────────────────────────────────────────
+  useEffect(() => {
+    if (projectLoadTimestamp > 0 && workspaceRef.current) {
+      workspaceRef.current.clear()
+      
+      const currentJson = useAppStore.getState().blocklyWorkspaceJson
+      if (currentJson && Object.keys(currentJson).length > 0) {
+        deserializeWorkspace(currentJson, workspaceRef.current)
+      } else {
+        const setupBlock = workspaceRef.current.newBlock('system_setup')
+        setupBlock.moveBy(50, 50)
+        setupBlock.initSvg()
+        setupBlock.render()
+
+        const loopBlock = workspaceRef.current.newBlock('system_loop')
+        loopBlock.moveBy(50, 250)
+        loopBlock.initSvg()
+        loopBlock.render()
+      }
+    }
+  }, [projectLoadTimestamp])
 
   return (
     <div
