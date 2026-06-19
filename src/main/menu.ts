@@ -1,4 +1,4 @@
-import { app, Menu, dialog, BrowserWindow } from 'electron';
+import { app, Menu, dialog, BrowserWindow, shell } from 'electron';
 import { getRecentProjects } from './ipc/projectHandlers';
 import { basename } from 'path';
 
@@ -33,6 +33,33 @@ export async function setupApplicationMenu() {
     if (windows.length > 0) {
       windows[0].webContents.send('menu:action', `open-recent|${filePath}`);
     }
+  };
+
+  const showShortcuts = (window: any) => {
+    const message = `
+Keyboard Shortcuts:
+• Ctrl/Cmd + Z : Undo
+• Ctrl/Cmd + Y : Redo
+• Ctrl/Cmd + C : Copy
+• Ctrl/Cmd + V : Paste
+• Delete / Backspace : Delete selected block or component
+• Scroll / Drag : Pan canvas
+• Ctrl/Cmd + Scroll : Zoom canvas
+    `.trim();
+    if (window) dialog.showMessageBox(window, { type: 'info', title: 'Keyboard Shortcuts', message });
+    else dialog.showMessageBox({ type: 'info', title: 'Keyboard Shortcuts', message });
+  };
+
+  const showUpdates = (window: any) => {
+    const message = 'You are currently on the latest version (v1.0.0).';
+    if (window) dialog.showMessageBox(window, { type: 'info', title: 'Check for Updates', message });
+    else dialog.showMessageBox({ type: 'info', title: 'Check for Updates', message });
+  };
+
+  const showAbout = (window: any) => {
+    const message = 'MY STREAM LAB\\nVersion 1.0.0\\n\\nA visual block-based IoT programming environment built for makers and educators.';
+    if (window) dialog.showMessageBox(window, { type: 'info', title: 'About MY STREAM LAB', message });
+    else dialog.showMessageBox({ type: 'info', title: 'About MY STREAM LAB', message });
   };
 
   const recents = await getRecentProjects();
@@ -114,14 +141,14 @@ export async function setupApplicationMenu() {
     {
       label: 'HELP',
       submenu: [
-        { label: 'User Guide', click: showComingSoon },
-        { label: 'Keyboard Shortcuts', click: showComingSoon },
-        { label: 'Documentation', click: showComingSoon },
+        { label: 'User Guide', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab#readme') },
+        { label: 'Keyboard Shortcuts', click: (item, window) => showShortcuts(window) },
+        { label: 'Documentation', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab/wiki') },
         { type: 'separator' },
-        { label: 'Report Issue', click: showComingSoon },
-        { label: 'Check for Updates', click: showComingSoon },
+        { label: 'Report Issue', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab/issues') },
+        { label: 'Check for Updates', click: (item, window) => showUpdates(window) },
         { type: 'separator' },
-        { label: 'About MY STREAM LAB', click: showComingSoon }
+        { label: 'About MY STREAM LAB', click: (item, window) => showAbout(window) }
       ]
     }
   ];
