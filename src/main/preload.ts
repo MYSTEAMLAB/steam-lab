@@ -29,8 +29,9 @@ const api = {
     compile: (code: string, fqbn: string) => ipcRenderer.invoke('compiler:compile', code, fqbn),
     upload: (code: string, fqbn: string, port: string) => ipcRenderer.invoke('compiler:upload', code, fqbn, port),
     onLog: (callback: (log: string) => void) => {
-      ipcRenderer.on('compiler:log', (_event, log) => callback(log))
-      return () => { ipcRenderer.removeAllListeners('compiler:log') }
+      const listener = (_event: any, log: string) => callback(log)
+      ipcRenderer.on('compiler:log', listener)
+      return () => { ipcRenderer.removeListener('compiler:log', listener) }
     }
   },
 
@@ -40,16 +41,19 @@ const api = {
     close: () => ipcRenderer.invoke('serial:close'),
     write: (data: string) => ipcRenderer.invoke('serial:write', data),
     onData: (callback: (data: string) => void) => {
-      ipcRenderer.on('serial:data', (_event, data) => callback(data))
-      return () => { ipcRenderer.removeAllListeners('serial:data') }
+      const listener = (_event: any, data: string) => callback(data)
+      ipcRenderer.on('serial:data', listener)
+      return () => { ipcRenderer.removeListener('serial:data', listener) }
     },
     onError: (callback: (error: string) => void) => {
-      ipcRenderer.on('serial:error', (_event, error) => callback(error))
-      return () => { ipcRenderer.removeAllListeners('serial:error') }
+      const listener = (_event: any, error: string) => callback(error)
+      ipcRenderer.on('serial:error', listener)
+      return () => { ipcRenderer.removeListener('serial:error', listener) }
     },
     onClosed: (callback: () => void) => {
-      ipcRenderer.on('serial:closed', () => callback())
-      return () => { ipcRenderer.removeAllListeners('serial:closed') }
+      const listener = () => callback()
+      ipcRenderer.on('serial:closed', listener)
+      return () => { ipcRenderer.removeListener('serial:closed', listener) }
     }
   },
 
@@ -65,8 +69,9 @@ const api = {
   },
 
   onMenuAction: (callback: (action: string) => void) => {
-    ipcRenderer.on('menu:action', (_event, action) => callback(action))
-    return () => { ipcRenderer.removeAllListeners('menu:action') }
+    const listener = (_event: any, action: string) => callback(action)
+    ipcRenderer.on('menu:action', listener)
+    return () => { ipcRenderer.removeListener('menu:action', listener) }
   }
 }
 

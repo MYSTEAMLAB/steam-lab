@@ -70,6 +70,30 @@ export const Toolbar: React.FC = () => {
     }
   }
 
+  // ── Listen to Main Menu Device Actions ──────────────────────────────────
+  useEffect(() => {
+    if (!(window as any).api?.onMenuAction) return
+
+    const cleanup = (window as any).api.onMenuAction(async (action: string) => {
+      if (action === 'device-connect') {
+        if (!isSerialConnected && selectedPort) {
+          await handleConnectToggle()
+        } else if (!selectedPort) {
+          setStatusText('Select a COM port first!')
+        }
+      } else if (action === 'device-disconnect') {
+        if (isSerialConnected) {
+          await handleConnectToggle()
+        }
+      } else if (action === 'device-scan') {
+        fetchPorts(true)
+      }
+    })
+
+    return () => cleanup()
+  }, [isSerialConnected, selectedPort])
+
+
   const handleCompile = async () => {
     if (!selectedBoard || !generatedCode) return
     setIsCompiling(true)

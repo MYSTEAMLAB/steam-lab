@@ -103,9 +103,9 @@ export async function setupApplicationMenu() {
     {
       label: 'DEVICE',
       submenu: [
-        { label: 'Connect Device', click: showComingSoon },
-        { label: 'Disconnect Device', click: showComingSoon },
-        { label: 'Scan COM Ports', click: showComingSoon },
+        { label: 'Connect Device', click: () => dispatchAction('device-connect') },
+        { label: 'Disconnect Device', click: () => dispatchAction('device-disconnect') },
+        { label: 'Scan COM Ports', click: () => dispatchAction('device-scan') },
         { type: 'separator' },
         { label: 'ESP32 Information', click: showComingSoon },
         { label: 'Firmware Tools', click: showComingSoon }
