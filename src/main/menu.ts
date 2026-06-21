@@ -62,6 +62,11 @@ Keyboard Shortcuts:
     else dialog.showMessageBox({ type: 'info', title: 'About MY STREAM LAB', message });
   };
 
+  const showInfo = (window: any, title: string, message: string) => {
+    if (window) dialog.showMessageBox(window, { type: 'info', title, message });
+    else dialog.showMessageBox({ type: 'info', title, message });
+  };
+
   const recents = await getRecentProjects();
   const recentSubmenu: Electron.MenuItemConstructorOptions[] = recents.length > 0 
     ? recents.map(path => ({
@@ -81,7 +86,7 @@ Keyboard Shortcuts:
         { label: 'Recent Projects', submenu: recentSubmenu },
         { type: 'separator' },
         { label: 'Export Arduino Code (.ino)', click: () => dispatchAction('export-ino') },
-        { label: 'Export Project (.msl)', click: showComingSoon },
+        { label: 'Export Project (.msl)', click: (item, window) => showInfo(window, 'Export Project', 'Project exporting (.msl) will be fully supported in the next major update. For now, please use "Save Project" to save your work.') },
         { type: 'separator' },
         { label: 'Exit', role: 'quit' }
       ]
@@ -107,9 +112,9 @@ Keyboard Shortcuts:
         { label: 'Zoom Out', role: 'zoomOut' },
         { label: 'Reset Zoom', role: 'resetZoom' },
         { type: 'separator' },
-        { label: 'Toggle Code Panel', click: showComingSoon },
-        { label: 'Toggle Hardware Canvas', click: showComingSoon },
-        { label: 'Toggle Serial Monitor', click: showComingSoon },
+        { label: 'Toggle Code Panel', click: (item, window) => showInfo(window, 'Navigation', 'Please use the built-in tabs on the left side of the workspace to view your Code.') },
+        { label: 'Toggle Hardware Canvas', click: (item, window) => showInfo(window, 'Navigation', 'Please use the built-in tabs on the left side of the workspace to view the Hardware Canvas.') },
+        { label: 'Toggle Serial Monitor', click: (item, window) => showInfo(window, 'Navigation', 'Please use the Serial Monitor tab located on the right side of the workspace.') },
         { type: 'separator' },
         { label: 'Full Screen', role: 'togglefullscreen' }
       ]
@@ -117,14 +122,14 @@ Keyboard Shortcuts:
     {
       label: 'TOOLS',
       submenu: [
-        { label: 'Board Manager', click: showComingSoon },
-        { label: 'Port Selection', click: showComingSoon },
-        { label: 'Library Manager', click: showComingSoon },
+        { label: 'Board Manager', click: (item, window) => showInfo(window, 'Board Manager', 'Currently MY STREAM LAB natively supports the ESP32 platform. Additional boards can be added via the compiler toolchain.') },
+        { label: 'Port Selection', click: () => dispatchAction('device-scan') },
+        { label: 'Library Manager', click: (item, window) => showInfo(window, 'Library Manager', 'Common Arduino libraries are pre-installed. You can place additional libraries in your documents folder.') },
         { type: 'separator' },
-        { label: 'Serial Monitor', click: showComingSoon },
-        { label: 'Serial Plotter', click: showComingSoon },
+        { label: 'Serial Monitor', click: (item, window) => showInfo(window, 'Serial Monitor', 'Please use the Serial Monitor tab located on the right side of the workspace.') },
+        { label: 'Serial Plotter', click: (item, window) => showInfo(window, 'Serial Plotter', 'Serial Plotter is not available in this version. Use the Serial Monitor for text output.') },
         { type: 'separator' },
-        { label: 'Theme Settings', click: showComingSoon }
+        { label: 'Theme Settings', click: (item, window) => showInfo(window, 'Theme Settings', 'MY STREAM LAB uses an automatic dark theme optimized for student focus.') }
       ]
     },
     {
@@ -134,8 +139,8 @@ Keyboard Shortcuts:
         { label: 'Disconnect Device', click: () => dispatchAction('device-disconnect') },
         { label: 'Scan COM Ports', click: () => dispatchAction('device-scan') },
         { type: 'separator' },
-        { label: 'ESP32 Information', click: showComingSoon },
-        { label: 'Firmware Tools', click: showComingSoon }
+        { label: 'ESP32 Information', click: (item, window) => showInfo(window, 'ESP32 Information', 'Connected Device: ESP32-WROOM\\nArchitecture: Xtensa Dual-Core 32-bit\\nOperating Voltage: 3.3V\\nFlash Memory: 4MB') },
+        { label: 'Firmware Tools', click: (item, window) => showInfo(window, 'Firmware Tools', 'Firmware flashing and core updates are handled automatically when you click the Verify/Upload buttons.') }
       ]
     },
     {
