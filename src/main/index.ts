@@ -29,7 +29,7 @@ function createWindow(): void {
     frame: true,
     titleBarStyle: 'default',
     backgroundColor: '#0f172a',
-    title: 'MY STREAM LAB',
+    title: 'MY STEAM LAB',
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       // ── Security configuration ──────────────────────────────────────────

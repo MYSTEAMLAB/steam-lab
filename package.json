@@ -2,10 +2,10 @@
   "name": "my-stream-lab",
   "version": "1.0.0",
   "type": "module",
-  "description": "MY STREAM LAB - Visual ESP32/Arduino IDE for Students",
+  "description": "MY STEAM LAB - Visual ESP32/Arduino IDE for Students",
   "main": "./out/main/index.js",
   "homepage": "https://mystreamlab.in",
-  "author": "MY STREAM LAB",
+  "author": "MY STEAM LAB",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",

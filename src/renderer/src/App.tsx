@@ -38,7 +38,7 @@ export const App: React.FC = () => {
       <div className="flex items-center justify-center h-screen w-screen bg-surface-DEFAULT">
         <div className="text-center animate-fade-in">
           <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover shadow-lg" />
-          <h1 className="text-xl font-bold text-slate-100 tracking-tight uppercase">MY STREAM LAB</h1>
+          <h1 className="text-xl font-bold text-slate-100 tracking-tight uppercase">MY STEAM LAB</h1>
           <p className="text-sm text-slate-500 mt-1">Starting up…</p>
         </div>
       </div>

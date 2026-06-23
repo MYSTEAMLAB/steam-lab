@@ -157,3 +157,9 @@ html, body, #root {
   opacity: 1;
 }
 
+
+/* -- Fix Blockly Text Input -- */
+.blocklyHtmlInput {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}

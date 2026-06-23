@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '@renderer/store/useAppStore'
 import { InteractiveBoard } from './InteractiveBoard'
 import { boardRegistry } from '@shared/boards'
-import { LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent } from './components/ComponentRenderers'
+import { LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent, BuzzerComponent } from './components/ComponentRenderers'
 import { COMPONENT_PIN_OFFSETS } from './components/pinOffsets'
 import { PropertiesPanel } from './PropertiesPanel'
 
@@ -231,6 +231,7 @@ export const HardwareCanvas: React.FC = () => {
             if (device.type === 'servo') Renderer = ServoComponent
             if (device.type === 'ldr') Renderer = LDRComponent
             if (device.type === 'joystick') Renderer = JoystickComponent
+            if (device.type === 'buzzer') Renderer = BuzzerComponent
 
             const mappedPins: string[] = []
             if (typeof device.mappedPin === 'string' && device.mappedPin) {

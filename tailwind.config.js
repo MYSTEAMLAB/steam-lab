@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // MY STREAM LAB Design System
+        // MY STEAM LAB Design System
         primary: {
           50:  '#eff6ff',
           100: '#dbeafe',

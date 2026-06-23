@@ -59,7 +59,7 @@ export const AppLayout: React.FC = () => {
               <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
             </div>
             <span className="text-sm font-bold text-slate-100 tracking-tight uppercase">
-              MY STREAM LAB
+              MY STEAM LAB
             </span>
           </div>
 
@@ -245,7 +245,7 @@ export const AppLayout: React.FC = () => {
         <span>
           Board: <span className="text-primary-400">{selectedBoard?.name ?? '—'}</span>
         </span>
-        <span className="text-slate-700 font-bold uppercase">MY STREAM LAB</span>
+        <span className="text-slate-700 font-bold uppercase">MY STEAM LAB</span>
         <span>Ready</span>
       </footer>
     </div>

@@ -57,9 +57,9 @@ Keyboard Shortcuts:
   };
 
   const showAbout = (window: any) => {
-    const message = 'MY STREAM LAB\\nVersion 1.0.0\\n\\nA visual block-based IoT programming environment built for makers and educators.';
-    if (window) dialog.showMessageBox(window, { type: 'info', title: 'About MY STREAM LAB', message });
-    else dialog.showMessageBox({ type: 'info', title: 'About MY STREAM LAB', message });
+    const message = 'MY STEAM LAB\\nVersion 1.0.0\\n\\nA visual block-based IoT programming environment built for makers and educators.';
+    if (window) dialog.showMessageBox(window, { type: 'info', title: 'About MY STEAM LAB', message });
+    else dialog.showMessageBox({ type: 'info', title: 'About MY STEAM LAB', message });
   };
 
   const showInfo = (window: any, title: string, message: string) => {
@@ -122,14 +122,12 @@ Keyboard Shortcuts:
     {
       label: 'TOOLS',
       submenu: [
-        { label: 'Board Manager', click: (item, window) => showInfo(window, 'Board Manager', 'Currently MY STREAM LAB natively supports the ESP32 platform. Additional boards can be added via the compiler toolchain.') },
+        { label: 'Board Manager', click: (item, window) => showInfo(window, 'Board Manager', 'Currently MY STEAM LAB natively supports the ESP32 platform. Additional boards can be added via the compiler toolchain.') },
         { label: 'Port Selection', click: () => dispatchAction('device-scan') },
         { label: 'Library Manager', click: (item, window) => showInfo(window, 'Library Manager', 'Common Arduino libraries are pre-installed. You can place additional libraries in your documents folder.') },
         { type: 'separator' },
         { label: 'Serial Monitor', click: (item, window) => showInfo(window, 'Serial Monitor', 'Please use the Serial Monitor tab located on the right side of the workspace.') },
-        { label: 'Serial Plotter', click: (item, window) => showInfo(window, 'Serial Plotter', 'Serial Plotter is not available in this version. Use the Serial Monitor for text output.') },
-        { type: 'separator' },
-        { label: 'Theme Settings', click: (item, window) => showInfo(window, 'Theme Settings', 'MY STREAM LAB uses an automatic dark theme optimized for student focus.') }
+        { label: 'Serial Plotter', click: (item, window) => showInfo(window, 'Serial Plotter', 'Serial Plotter is not available in this version. Use the Serial Monitor for text output.') }
       ]
     },
     {
@@ -153,7 +151,7 @@ Keyboard Shortcuts:
         { label: 'Report Issue', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab/issues') },
         { label: 'Check for Updates', click: (item, window) => showUpdates(window) },
         { type: 'separator' },
-        { label: 'About MY STREAM LAB', click: (item, window) => showAbout(window) }
+        { label: 'About MY STEAM LAB', click: () => shell.openExternal('https://www.mysteamlab.com') }
       ]
     }
   ];

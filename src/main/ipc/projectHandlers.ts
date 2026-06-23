@@ -35,8 +35,8 @@ export function registerProjectHandlers() {
     if (!targetPath) {
       if (!window) return null;
       const result = await dialog.showOpenDialog(window, {
-        title: 'Open MY STREAM LAB Project',
-        filters: [{ name: 'MY STREAM LAB Project', extensions: ['msl'] }],
+        title: 'Open MY STEAM LAB Project',
+        filters: [{ name: 'MY STEAM LAB Project', extensions: ['msl'] }],
         properties: ['openFile']
       });
 
@@ -77,8 +77,8 @@ export function registerProjectHandlers() {
     if (!window) return null;
 
     const result = await dialog.showSaveDialog(window, {
-      title: 'Save MY STREAM LAB Project',
-      filters: [{ name: 'MY STREAM LAB Project', extensions: ['msl'] }],
+      title: 'Save MY STEAM LAB Project',
+      filters: [{ name: 'MY STEAM LAB Project', extensions: ['msl'] }],
       defaultPath: data.projectName || 'Untitled Project'
     });
 

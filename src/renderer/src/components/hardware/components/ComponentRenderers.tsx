@@ -37,13 +37,27 @@ export const LEDComponent: React.FC<ComponentProps> = ({ device, onPinClick, act
       <path d="M -15,0 A 15,15 0 0,1 15,0 L 15,10 L -15,10 Z" fill={color} stroke="#b91c1c" strokeWidth="2" />
       <rect x="-18" y="10" width="36" height="4" fill="#991b1b" />
       
-      {/* Legs */}
-      <rect x="-8" y="14" width="4" height="20" fill="#94a3b8" />
-      <rect x="4" y="14" width="4" height="30" fill="#94a3b8" />
+      {/* Single Leg */}
+      <rect x="-2" y="14" width="4" height="25" fill="#94a3b8" />
       
-      {/* Pin Hitboxes */}
-      <Hitbox x={-6} y={34} name="Cathode (GND)" isActive={activeWireSource === `${device.id}:Cathode`} onClick={(n) => onPinClick(`${device.id}:Cathode`, -6, 34)} />
-      <Hitbox x={6} y={44} name="Anode (VCC)" isActive={activeWireSource === `${device.id}:Anode`} onClick={(n) => onPinClick(`${device.id}:Anode`, 6, 44)} />
+      {/* Pin Hitbox */}
+      <Hitbox x={0} y={39} name="Signal" isActive={activeWireSource === `${device.id}:Anode`} onClick={(n) => onPinClick(`${device.id}:Anode`, 0, 39)} />
+    </g>
+  )
+}
+
+export const BuzzerComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-16" y="-16" width="32" height="32" rx="16" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+      <circle cx="0" cy="0" r="6" fill="#334155" />
+      <text y="-20" fontSize="10" fill="#94a3b8" textAnchor="middle">Buzzer</text>
+      
+      {/* Single Leg */}
+      <rect x="-2" y="16" width="4" height="15" fill="#94a3b8" />
+      
+      {/* Pin Hitbox */}
+      <Hitbox x={0} y={31} name="Signal" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, 0, 31)} />
     </g>
   )
 }

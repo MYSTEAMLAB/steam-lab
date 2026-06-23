@@ -1,7 +1,9 @@
 export const COMPONENT_PIN_OFFSETS: Record<string, Record<string, { x: number, y: number }>> = {
   led: {
-    'Cathode': { x: -6, y: 34 },
-    'Anode': { x: 6, y: 44 }
+    'Anode': { x: 0, y: 39 }
+  },
+  buzzer: {
+    '1': { x: 0, y: 31 }
   },
   button: {
     '1A': { x: -28, y: -11 },
