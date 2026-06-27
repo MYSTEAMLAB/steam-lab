@@ -252,6 +252,14 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
   for (const device of currentDevices) {
     if (typeof device.mappedPin === 'string' && device.mappedPin) {
       assignedPins.add(device.mappedPin)
+      
+      // Automatically reserve the hidden paired ground pin for M-port LEDs
+      if (device.type === 'led') {
+        const pairedGnd: Record<string, string> = { 'GPIO18': 'GPIO19', 'GPIO17': 'GPIO5', 'GPIO22': 'GPIO23', 'GPIO16': 'GPIO21' };
+        if (pairedGnd[device.mappedPin]) {
+          assignedPins.add(pairedGnd[device.mappedPin])
+        }
+      }
     } else if (typeof device.mappedPin === 'object' && device.mappedPin !== null) {
       for (const p of Object.values(device.mappedPin)) {
         if (typeof p === 'string' && p) assignedPins.add(p)
