@@ -16,10 +16,12 @@ export interface ComponentPinRequirements {
 // Defines the board interface requirements for each type of peripheral component
 export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = {
   led: {
-    type: 'Digital Output',
-    requiredInterfaces: ['DIGITAL_OUT'],
-    mustNotBeInputOnly: true,
-    description: 'Requires a digital output pin'
+    type: 'LED Module',
+    requiredInterfaces: {
+      in1: ['DIGITAL_OUT'],
+      in2: ['DIGITAL_OUT']
+    },
+    description: 'Requires two digital output pins'
   },
   button: {
     type: 'Digital Input',

@@ -287,6 +287,38 @@
         "I2C_SCL"
       ]
     },
+    "led": {
+      "type": "output",
+      "preferredPin": {
+        "in1": "GPIO19",
+        "in2": "GPIO18"
+      },
+      "compat": ["DIGITAL_OUT"]
+    },
+    "led_2": {
+      "type": "output",
+      "preferredPin": {
+        "in1": "GPIO5",
+        "in2": "GPIO17"
+      },
+      "compat": ["DIGITAL_OUT"]
+    },
+    "led_3": {
+      "type": "output",
+      "preferredPin": {
+        "in1": "GPIO23",
+        "in2": "GPIO22"
+      },
+      "compat": ["DIGITAL_OUT"]
+    },
+    "led_4": {
+      "type": "output",
+      "preferredPin": {
+        "in1": "GPIO21",
+        "in2": "GPIO16"
+      },
+      "compat": ["DIGITAL_OUT"]
+    },
     "servo": {
       "type": "output",
       "preferredPin": "GPIO27",

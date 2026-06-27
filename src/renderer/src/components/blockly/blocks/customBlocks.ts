@@ -102,7 +102,9 @@ function getComponentPins(type: string): [string, string][] {
         if (typeof d.mappedPin === 'string') {
           options.push([`${d.mappedPin} (${type.toUpperCase()} #${index})`, d.mappedPin])
         } else {
-          options.push([`ID: ${d.id.substring(0, 8)}... (${type.toUpperCase()} #${index})`, d.id])
+          // If it's an object with multiple pins (like motor or LED on M-ports)
+          const pinVals = Object.values(d.mappedPin).join(', ')
+          options.push([`Pins: ${pinVals} (${type.toUpperCase()} #${index})`, d.id])
         }
         index++
       }
