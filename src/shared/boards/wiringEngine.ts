@@ -17,11 +17,8 @@ export interface ComponentPinRequirements {
 export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = {
   led: {
     type: 'LED Module',
-    requiredInterfaces: {
-      in1: ['DIGITAL_OUT'],
-      in2: ['DIGITAL_OUT']
-    },
-    description: 'Requires two digital output pins'
+    requiredInterfaces: ['DIGITAL_OUT'],
+    description: 'Requires a digital output pin'
   },
   button: {
     type: 'Digital Input',

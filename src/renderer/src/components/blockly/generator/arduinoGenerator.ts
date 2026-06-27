@@ -108,34 +108,31 @@ arduinoGenerator.forBlock['serial_print'] = function(block: Blockly.Block) {
 
 arduinoGenerator.forBlock['output_led_on'] = function(block: Blockly.Block) {
   const devId = getPinFieldValue(block) || 'LED_BUILTIN';
+  const pin = getDevicePin(devId) || devId;
   
-  const in1 = getDevicePin(devId, 'in1');
-  const in2 = getDevicePin(devId, 'in2');
-  
-  if (in1 && in2 && in1 !== in2) {
-    let code = `digitalWrite(${in1}, LOW);\n`;
-    code += `digitalWrite(${in2}, HIGH);\n`;
-    return code;
+  let code = '';
+  // Hardcoded mapping for M-port LEDs where 1 pin must be LOW
+  const pairedGnd: Record<string, string> = { '18': '19', '17': '5', '22': '23', '16': '21' };
+  if (pairedGnd[pin]) {
+    code += `digitalWrite(${pairedGnd[pin]}, LOW);\n`;
   }
   
-  const singlePin = getDevicePin(devId) || devId;
-  return `digitalWrite(${singlePin}, HIGH);\n`;
+  code += `digitalWrite(${pin}, HIGH);\n`;
+  return code;
 }
 
 arduinoGenerator.forBlock['output_led_off'] = function(block: Blockly.Block) {
   const devId = getPinFieldValue(block) || 'LED_BUILTIN';
+  const pin = getDevicePin(devId) || devId;
   
-  const in1 = getDevicePin(devId, 'in1');
-  const in2 = getDevicePin(devId, 'in2');
-  
-  if (in1 && in2 && in1 !== in2) {
-    let code = `digitalWrite(${in1}, LOW);\n`;
-    code += `digitalWrite(${in2}, LOW);\n`;
-    return code;
+  let code = '';
+  const pairedGnd: Record<string, string> = { '18': '19', '17': '5', '22': '23', '16': '21' };
+  if (pairedGnd[pin]) {
+    code += `digitalWrite(${pairedGnd[pin]}, LOW);\n`;
   }
   
-  const singlePin = getDevicePin(devId) || devId;
-  return `digitalWrite(${singlePin}, LOW);\n`;
+  code += `digitalWrite(${pin}, LOW);\n`;
+  return code;
 }
 
 arduinoGenerator.forBlock['output_buzzer_on'] = function(block: Blockly.Block) {
