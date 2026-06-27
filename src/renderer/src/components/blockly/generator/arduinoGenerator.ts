@@ -175,8 +175,7 @@ arduinoGenerator.forBlock['output_servo_write'] = function(block: Blockly.Block)
 arduinoGenerator.forBlock['output_digital_write'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return '';
-  let state = arduinoGenerator.valueToCode(block, 'STATE', 0)
-  if (!state) state = block.getFieldValue('STATE') || 'LOW'
+  const state = block.getFieldValue('STATE') || 'LOW';
   return `digitalWrite(${pin}, ${state});\n`
 }
 

@@ -101,3 +101,12 @@ runTest("Test F: Bluetooth", (workspace, setupBlock, loopBlock) => {
 }, [
   { id: 'bt1', type: 'bluetooth', mappedPin: { tx: '16', rx: '17' }, canvasX: 0, canvasY: 0 }
 ]);
+
+// G. LED Paired GND Generation
+runTest("Test G: LED Paired GND Generation", (workspace, setupBlock, loopBlock) => {
+  const ledBlock = workspace.newBlock('output_led_on');
+  ledBlock.setFieldValue('led1', 'PIN');
+  ledBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
+}, [
+  { id: 'led1', type: 'led', mappedPin: '18', canvasX: 0, canvasY: 0 }
+]);

@@ -43,16 +43,11 @@ function getDigitalOutputPins(): [string, string][] {
     if (!layout || !layout.devices) return [['No Digital Outputs Connected', '']]
     
     const options: [string, string][] = []
-    for (const d of layout.devices) {
-      if (!d.mappedPin) continue
-      const reqs = COMPONENT_REQUIREMENTS[d.type]
-      // Support DIGITAL_OUT or PWM for outputs
-      if (reqs && Array.isArray(reqs.requiredInterfaces) && (reqs.requiredInterfaces.includes('DIGITAL_OUT') || reqs.requiredInterfaces.includes('PWM'))) {
-        if (typeof d.mappedPin === 'string') {
-          options.push([`${d.mappedPin} (${d.type.toUpperCase()})`, d.mappedPin])
-        }
+    layout.devices.forEach((d: any, index: number) => {
+      if (d.type === 'led' || d.type === 'relay' || d.type === 'buzzer') {
+        options.push([`${d.id} (${d.mappedPin})`, d.mappedPin])
       }
-    }
+    })
     return options.length > 0 ? options : [['No Digital Outputs Connected', '']]
   } catch (err) {
     console.error('[Blocks] getDigitalOutputPins error:', err)
