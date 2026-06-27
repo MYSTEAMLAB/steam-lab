@@ -318,19 +318,27 @@ float ${funcName}() {
 
 arduinoGenerator.forBlock['output_dcmotor_set'] = function(block: Blockly.Block) {
   const devId = getPinFieldValue(block);
-  // Default to LOW if not found (e.g., if upgrading from old block XML)
-  const state = block.getFieldValue('STATE') || 'LOW';
+  // Default to STOP if not found
+  const state = block.getFieldValue('STATE') || 'STOP';
   
   const in1 = getDevicePin(devId, 'in1');
   const in2 = getDevicePin(devId, 'in2');
   if (!isValidPin(in1) || !isValidPin(in2)) return '';
 
   let code = '';
-  // Pin 1 is always LOW (negative)
-  code += `digitalWrite(${in1}, LOW);\n`;
-  if (state === 'HIGH') {
+  if (state === 'FWD') {
+    code += `digitalWrite(${in1}, HIGH);\n`;
+    code += `digitalWrite(${in2}, LOW);\n`;
+  } else if (state === 'REV') {
+    code += `digitalWrite(${in1}, LOW);\n`;
+    code += `digitalWrite(${in2}, HIGH);\n`;
+  } else if (state === 'HIGH') {
+    // Legacy support for user's previous code
+    code += `digitalWrite(${in1}, LOW);\n`;
     code += `digitalWrite(${in2}, HIGH);\n`;
   } else {
+    // STOP or LOW
+    code += `digitalWrite(${in1}, LOW);\n`;
     code += `digitalWrite(${in2}, LOW);\n`;
   }
   return code;

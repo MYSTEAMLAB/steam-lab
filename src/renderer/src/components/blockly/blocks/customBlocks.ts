@@ -525,11 +525,15 @@ export function registerCustomBlocks(): void {
   // DC Motor Control
   Blockly.Blocks['output_dcmotor_set'] = {
     init: function (this: Blockly.Block) {
-      this.appendDummyInput()
-        .appendField('Set Motor')
-        .appendField(new Blockly.FieldDropdown(() => getComponentPins('dcmotor')), 'PIN')
-        .appendField('State')
-        .appendField(new Blockly.FieldDropdown([['HIGH', 'HIGH'], ['LOW', 'LOW']]), 'STATE')
+        this.appendDummyInput()
+          .appendField('Set Motor')
+          .appendField(new Blockly.FieldDropdown(() => getComponentPins('dcmotor')), 'PIN')
+          .appendField('to')
+          .appendField(new Blockly.FieldDropdown([
+            ['Forward', 'FWD'],
+            ['Backward', 'REV'],
+            ['Stop', 'STOP']
+          ]), 'STATE')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('output_blocks')
