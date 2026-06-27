@@ -80,7 +80,7 @@ const fs = require('fs');
     
     btnBlock.setFieldValue('btn1', 'PIN');
     motorBlock.setFieldValue('motor1', 'PIN');
-    motorBlock.setFieldValue('FWD', 'ACTION');
+    motorBlock.setFieldValue('HIGH', 'STATE');
     
     ifBlock.getInput('IF0').connection.connect(btnBlock.outputConnection);
     ifBlock.getInput('DO0').connection.connect(motorBlock.previousConnection);

@@ -79,50 +79,7 @@ export const BlocklyWorkspace: React.FC = () => {
 
     workspaceRef.current = workspace
 
-    workspace.registerButtonCallback('createVariableCallback', (button) => {
-      Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace() as Blockly.WorkspaceSvg)
-    })
 
-    workspace.registerToolboxCategoryCallback('MY_VARIABLES', (ws) => {
-      const variableModelList = ws.getAllVariables()
-      const blockList: any[] = []
-
-      blockList.push({
-        kind: 'button',
-        text: 'Create variable...',
-        callbackKey: 'createVariableCallback'
-      })
-
-      blockList.push({ kind: 'block', type: 'declare_variable' })
-      blockList.push({ kind: 'block', type: 'variables_set' })
-      blockList.push({ kind: 'block', type: 'variables_get' })
-      blockList.push({ kind: 'block', type: 'math_change' })
-
-      if (variableModelList.length > 0) {
-        blockList.push({
-          kind: 'label',
-          text: 'Created Variables:',
-          'web-class': 'blocklyFlyoutLabel'
-        })
-        
-        variableModelList.forEach((variable) => {
-          const v = variable as any
-          blockList.push({
-            kind: 'block',
-            type: 'variables_get',
-            fields: {
-              VAR: {
-                id: v.getId(),
-                name: v.name,
-                type: v.type
-              }
-            }
-          })
-        })
-      }
-
-      return blockList
-    })
 
     if (blocklyWorkspaceJson && Object.keys(blocklyWorkspaceJson).length > 0) {
       deserializeWorkspace(blocklyWorkspaceJson, workspace)

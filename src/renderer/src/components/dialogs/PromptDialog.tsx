@@ -41,7 +41,7 @@ export const PromptDialog: React.FC = () => {
           <input
             ref={inputRef}
             type="text"
-            className="w-full bg-surface-200 border border-panel-border rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+            className="w-full bg-surface-200 border border-panel-border rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all select-text"
             value={value}
             onChange={e => setValue(e.target.value)}
           />

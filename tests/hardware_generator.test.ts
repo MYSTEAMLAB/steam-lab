@@ -25,14 +25,14 @@ runTest("Test A: Button -> Motor", (workspace, setupBlock, loopBlock) => {
 
   btnBlock.setFieldValue('btn1', 'PIN');
   motorBlock.setFieldValue('motor1', 'PIN');
-  motorBlock.setFieldValue('FWD', 'ACTION');
+  motorBlock.setFieldValue('HIGH', 'STATE');
 
   ifBlock.getInput('IF0')!.connection!.connect(btnBlock.outputConnection!);
   ifBlock.getInput('DO0')!.connection!.connect(motorBlock.previousConnection!);
   ifBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
   { id: 'btn1', type: 'button', mappedPin: '35', canvasX: 0, canvasY: 0 },
-  { id: 'motor1', type: 'dcmotor', mappedPin: { pwm: '18', in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
+  { id: 'motor1', type: 'dcmotor', mappedPin: { in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
 ]);
 
 // B. Potentiometer -> Motor Speed
@@ -45,7 +45,7 @@ runTest("Test B: Potentiometer -> Motor Speed", (workspace, setupBlock, loopBloc
   motorBlock.previousConnection!.connect(loopBlock.getInput('STACK')!.connection!);
 }, [
   { id: 'pot1', type: 'potentiometer', mappedPin: '34', canvasX: 0, canvasY: 0 },
-  { id: 'motor1', type: 'dcmotor', mappedPin: { pwm: '18', in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
+  { id: 'motor1', type: 'dcmotor', mappedPin: { in1: '19', in2: '21' }, canvasX: 0, canvasY: 0 }
 ]);
 
 // C. Touch Sensor -> OLED

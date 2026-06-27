@@ -193,7 +193,7 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
       kind: 'category',
       name: 'Variables',
       categorystyle: 'variable_category',
-      custom: 'MY_VARIABLES'
+      custom: 'VARIABLE'
     },
 
     // ── 14. Functions ─────────────────────────────────────────────────────
