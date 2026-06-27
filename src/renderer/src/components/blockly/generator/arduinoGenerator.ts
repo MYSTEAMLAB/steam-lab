@@ -624,6 +624,14 @@ export function generateFullArduinoCode(
         if (reqs.requiredInterfaces.includes('DIGITAL_OUT') || reqs.requiredInterfaces.includes('PWM')) {
           pinModes.push(`  pinMode(${pin}, OUTPUT); // ${device.type}`)
           pinModes.push(`  digitalWrite(${pin}, LOW); // prevent boot spin`)
+            
+          if (device.type === 'led') {
+            const pairedGnd: Record<string, string> = { '18': '19', '17': '5', '22': '23', '16': '21' };
+            if (pairedGnd[pin]) {
+              pinModes.push(`  pinMode(${pairedGnd[pin]}, OUTPUT); // led paired gnd`)
+              pinModes.push(`  digitalWrite(${pairedGnd[pin]}, LOW);`)
+            }
+          }
         } else if (reqs.requiredInterfaces.includes('DIGITAL_IN') || reqs.requiredInterfaces.includes('ANALOG_IN')) {
           if (device.type === 'button') {
             pinModes.push(`  pinMode(${pin}, INPUT_PULLUP); // ${device.type}`)
