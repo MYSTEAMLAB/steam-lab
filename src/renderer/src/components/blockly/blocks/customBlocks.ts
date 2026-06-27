@@ -24,7 +24,7 @@ function getDigitalInputPins(): [string, string][] {
       if (reqs && Array.isArray(reqs.requiredInterfaces) && reqs.requiredInterfaces.includes('DIGITAL_IN')) {
         if (typeof d.mappedPin === 'string') {
           counts[d.type] = (counts[d.type] || 0) + 1
-          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
+          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (${d.mappedPin})`, d.mappedPin])
         }
       }
     }
@@ -50,7 +50,7 @@ function getDigitalOutputPins(): [string, string][] {
       if (!d.mappedPin) return
       if (d.type === 'led' || d.type === 'relay' || d.type === 'buzzer') {
         counts[d.type] = (counts[d.type] || 0) + 1
-        options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
+        options.push([`${d.type.toUpperCase()} #${counts[d.type]} (${d.mappedPin})`, d.mappedPin])
       }
     })
     return options.length > 0 ? options : [['No Digital Outputs Connected', '']]
@@ -77,7 +77,7 @@ function getAnalogInputPins(): [string, string][] {
       if (reqs && Array.isArray(reqs.requiredInterfaces) && reqs.requiredInterfaces.includes('ANALOG_IN')) {
         if (typeof d.mappedPin === 'string') {
           counts[d.type] = (counts[d.type] || 0) + 1
-          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
+          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (${d.mappedPin})`, d.mappedPin])
         }
       }
     }
@@ -102,11 +102,11 @@ function getComponentPins(type: string): [string, string][] {
     for (const d of layout.devices) {
       if (d.type === type && d.mappedPin) {
         if (typeof d.mappedPin === 'string') {
-          options.push([`${type.toUpperCase()} #${index} (GPIO${d.mappedPin})`, d.mappedPin])
+          options.push([`${type.toUpperCase()} #${index} (${d.mappedPin})`, d.mappedPin])
         } else {
           // If it's an object with multiple pins (like motor or LED on M-ports)
-          const pinVals = Object.values(d.mappedPin).join(', GPIO')
-          options.push([`${type.toUpperCase()} #${index} (Pins: GPIO${pinVals})`, d.id])
+          const pinVals = Object.values(d.mappedPin).join(', ')
+          options.push([`${type.toUpperCase()} #${index} (Pins: ${pinVals})`, d.id])
         }
         index++
       }
