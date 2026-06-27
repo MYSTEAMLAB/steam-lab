@@ -17,12 +17,14 @@ function getDigitalInputPins(): [string, string][] {
     if (!layout || !layout.devices) return [['No Digital Inputs Connected', '']]
     
     const options: [string, string][] = []
+    const counts: Record<string, number> = {}
     for (const d of layout.devices) {
       if (!d.mappedPin) continue
       const reqs = COMPONENT_REQUIREMENTS[d.type]
       if (reqs && Array.isArray(reqs.requiredInterfaces) && reqs.requiredInterfaces.includes('DIGITAL_IN')) {
         if (typeof d.mappedPin === 'string') {
-          options.push([`${d.mappedPin} (${d.type.toUpperCase()})`, d.mappedPin])
+          counts[d.type] = (counts[d.type] || 0) + 1
+          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
         }
       }
     }
@@ -43,9 +45,12 @@ function getDigitalOutputPins(): [string, string][] {
     if (!layout || !layout.devices) return [['No Digital Outputs Connected', '']]
     
     const options: [string, string][] = []
-    layout.devices.forEach((d: any, index: number) => {
+    const counts: Record<string, number> = {}
+    layout.devices.forEach((d: any) => {
+      if (!d.mappedPin) return
       if (d.type === 'led' || d.type === 'relay' || d.type === 'buzzer') {
-        options.push([`${d.id} (${d.mappedPin})`, d.mappedPin])
+        counts[d.type] = (counts[d.type] || 0) + 1
+        options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
       }
     })
     return options.length > 0 ? options : [['No Digital Outputs Connected', '']]
@@ -65,12 +70,14 @@ function getAnalogInputPins(): [string, string][] {
     if (!layout || !layout.devices) return [['No Analog Inputs Connected', '']]
     
     const options: [string, string][] = []
+    const counts: Record<string, number> = {}
     for (const d of layout.devices) {
       if (!d.mappedPin) continue
       const reqs = COMPONENT_REQUIREMENTS[d.type]
       if (reqs && Array.isArray(reqs.requiredInterfaces) && reqs.requiredInterfaces.includes('ANALOG_IN')) {
         if (typeof d.mappedPin === 'string') {
-          options.push([`${d.mappedPin} (${d.type.toUpperCase()})`, d.mappedPin])
+          counts[d.type] = (counts[d.type] || 0) + 1
+          options.push([`${d.type.toUpperCase()} #${counts[d.type]} (GPIO${d.mappedPin})`, d.mappedPin])
         }
       }
     }
@@ -95,11 +102,11 @@ function getComponentPins(type: string): [string, string][] {
     for (const d of layout.devices) {
       if (d.type === type && d.mappedPin) {
         if (typeof d.mappedPin === 'string') {
-          options.push([`${d.mappedPin} (${type.toUpperCase()} #${index})`, d.mappedPin])
+          options.push([`${type.toUpperCase()} #${index} (GPIO${d.mappedPin})`, d.mappedPin])
         } else {
           // If it's an object with multiple pins (like motor or LED on M-ports)
-          const pinVals = Object.values(d.mappedPin).join(', ')
-          options.push([`Pins: ${pinVals} (${type.toUpperCase()} #${index})`, d.id])
+          const pinVals = Object.values(d.mappedPin).join(', GPIO')
+          options.push([`${type.toUpperCase()} #${index} (Pins: GPIO${pinVals})`, d.id])
         }
         index++
       }
