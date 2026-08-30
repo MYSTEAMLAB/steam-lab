@@ -6,7 +6,7 @@ import { boardRegistry } from '@shared/boards'
 import {
   LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent, BuzzerComponent,
   PotentiometerComponent, TempSensorComponent, DHT11Component, IRSensorComponent, TouchSensorComponent,
-  UltrasonicComponent, DCMotorComponent, MotorDriverComponent, OledComponent
+  UltrasonicComponent, DCMotorComponent, MotorDriverComponent, OledComponent, ColorSensorComponent
 } from './components/ComponentRenderers'
 import { COMPONENT_PIN_OFFSETS } from './components/pinOffsets'
 import { PropertiesPanel } from './PropertiesPanel'
@@ -245,6 +245,7 @@ export const HardwareCanvas: React.FC = () => {
             if (device.type === 'dcmotor') Renderer = DCMotorComponent
             if (device.type === 'motor_driver') Renderer = MotorDriverComponent
             if (device.type === 'oled') Renderer = OledComponent
+            if (device.type === 'color_sensor') Renderer = ColorSensorComponent
 
             const mappedPins: string[] = []
             if (typeof device.mappedPin === 'string' && device.mappedPin) {

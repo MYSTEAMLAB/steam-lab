@@ -49,6 +49,11 @@ export const COMPONENT_PIN_OFFSETS: Record<string, Record<string, { x: number, y
     'sda': { x: -4, y: 26 },
     'scl': { x: 4, y: 26 }
   },
+  color_sensor: {
+    '1': { x: -4, y: 26 },
+    'sda': { x: -4, y: 26 },
+    'scl': { x: 4, y: 26 }
+  },
   joystick: {
     '1': { x: 2, y: 34 }
   },

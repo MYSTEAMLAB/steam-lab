@@ -99,7 +99,11 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'input_ultrasonic_read' },
         { kind: 'block', type: 'input_touch_read' },
         { kind: 'block', type: 'input_touch_raw' },
-        { kind: 'block', type: 'input_color_read' }
+        { kind: 'block', type: 'input_color_read' },
+        { kind: 'block', type: 'input_color_clear' },
+        { kind: 'block', type: 'input_color_lux' },
+        { kind: 'block', type: 'input_color_temperature' },
+        { kind: 'block', type: 'input_color_is' }
       ]
     },
 
@@ -160,7 +164,12 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'wifi_connect' },
         { kind: 'block', type: 'wifi_status' },
         { kind: 'block', type: 'wifi_get_ip' },
-        { kind: 'block', type: 'wifi_http_request' }
+        { kind: 'block', type: 'wifi_http_request' },
+        { kind: 'label', text: 'ESP-NOW (board-to-board)' },
+        { kind: 'block', type: 'espnow_init' },
+        { kind: 'block', type: 'espnow_send_message' },
+        { kind: 'block', type: 'espnow_message_received' },
+        { kind: 'block', type: 'espnow_received_message' }
       ]
     },
 

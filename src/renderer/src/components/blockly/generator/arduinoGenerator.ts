@@ -309,54 +309,91 @@ function ensureAIRuntime(): void {
   arduinoGenerator.definitions_['var_ai_expression'] = 'String aiExpression = "None";';
   arduinoGenerator.definitions_['var_ai_expression_confidence'] = 'int aiExpressionConfidence = 0;';
 
+  // Parsing logic lives in its own function (rather than inline in the
+  // Serial-polling loop below) so ensureAIBluetoothBridge() can feed it
+  // lines read from SerialBT too — a paired Bluetooth connection carries
+  // bytes to the ESP32's BluetoothSerial radio, never to the hardware UART,
+  // so without this a "Bluetooth + AI Vision" project would silently never
+  // see any AI:* data even though the desktop app is happily sending it.
+  arduinoGenerator.functionNames_['parseAILine'] = `
+void parseAILine(String line) {
+  line.trim();
+  if (line.startsWith("AI:CLASS:")) {
+    String rest = line.substring(9);
+    int sep = rest.lastIndexOf(':');
+    if (sep > 0) {
+      aiPredictedClass = rest.substring(0, sep);
+      aiConfidence = rest.substring(sep + 1).toInt();
+    }
+  } else if (line.startsWith("AI:GESTURE:")) {
+    String rest = line.substring(11);
+    int sep = rest.lastIndexOf(':');
+    if (sep > 0) {
+      aiGesture = rest.substring(0, sep);
+      aiGestureConfidence = rest.substring(sep + 1).toInt();
+    }
+  } else if (line.startsWith("AI:OBJECT:")) {
+    String rest = line.substring(10);
+    int sep = rest.lastIndexOf(':');
+    if (sep > 0) {
+      aiObject = rest.substring(0, sep);
+      aiObjectConfidence = rest.substring(sep + 1).toInt();
+    }
+  } else if (line.startsWith("AI:SHAPE:")) {
+    String rest = line.substring(9);
+    int sep = rest.lastIndexOf(':');
+    if (sep > 0) {
+      aiShape = rest.substring(0, sep);
+      aiShapeConfidence = rest.substring(sep + 1).toInt();
+    }
+  } else if (line.startsWith("AI:EXPRESSION:")) {
+    String rest = line.substring(14);
+    int sep = rest.lastIndexOf(':');
+    if (sep > 0) {
+      aiExpression = rest.substring(0, sep);
+      aiExpressionConfidence = rest.substring(sep + 1).toInt();
+    }
+  } else if (line.startsWith("AI:MIC:")) {
+    aiMicLevel = line.substring(7).toInt();
+  }
+}
+`;
+
   arduinoGenerator.functionNames_['parseAISerial'] = `
 void parseAISerial() {
   while (Serial.available()) {
-    String line = Serial.readStringUntil('\\n');
-    line.trim();
-    if (line.startsWith("AI:CLASS:")) {
-      String rest = line.substring(9);
-      int sep = rest.lastIndexOf(':');
-      if (sep > 0) {
-        aiPredictedClass = rest.substring(0, sep);
-        aiConfidence = rest.substring(sep + 1).toInt();
-      }
-    } else if (line.startsWith("AI:GESTURE:")) {
-      String rest = line.substring(11);
-      int sep = rest.lastIndexOf(':');
-      if (sep > 0) {
-        aiGesture = rest.substring(0, sep);
-        aiGestureConfidence = rest.substring(sep + 1).toInt();
-      }
-    } else if (line.startsWith("AI:OBJECT:")) {
-      String rest = line.substring(10);
-      int sep = rest.lastIndexOf(':');
-      if (sep > 0) {
-        aiObject = rest.substring(0, sep);
-        aiObjectConfidence = rest.substring(sep + 1).toInt();
-      }
-    } else if (line.startsWith("AI:SHAPE:")) {
-      String rest = line.substring(9);
-      int sep = rest.lastIndexOf(':');
-      if (sep > 0) {
-        aiShape = rest.substring(0, sep);
-        aiShapeConfidence = rest.substring(sep + 1).toInt();
-      }
-    } else if (line.startsWith("AI:EXPRESSION:")) {
-      String rest = line.substring(14);
-      int sep = rest.lastIndexOf(':');
-      if (sep > 0) {
-        aiExpression = rest.substring(0, sep);
-        aiExpressionConfidence = rest.substring(sep + 1).toInt();
-      }
-    } else if (line.startsWith("AI:MIC:")) {
-      aiMicLevel = line.substring(7).toInt();
-    }
+    parseAILine(Serial.readStringUntil('\\n'));
   }
 }
 `;
 
   arduinoGenerator.definitions_['loop_ai_poll'] = '  parseAISerial();\n';
+
+  // If a Bluetooth block already ran (e.g. it appears earlier in setup),
+  // wire up the bridge now. If Bluetooth blocks appear later instead,
+  // ensureBluetoothIncludes() below does the equivalent check on its side —
+  // whichever of the two runs second is the one that actually adds it.
+  if (arduinoGenerator.definitions_['var_bluetooth']) {
+    ensureAIBluetoothBridge();
+  }
+}
+
+// Bridges AI:* data arriving over a paired Bluetooth (SerialBT) connection
+// into the same parseAILine() used for USB. Only wired up when a project
+// uses BOTH Bluetooth and AI Vision blocks — see the two call sites in
+// ensureAIRuntime() and ensureBluetoothIncludes(), each covering whichever
+// block type the workspace happens to generate first.
+function ensureAIBluetoothBridge(): void {
+  if (arduinoGenerator.definitions_['loop_ai_bt_poll']) return;
+
+  arduinoGenerator.functionNames_['parseAIBluetoothSerial'] = `
+void parseAIBluetoothSerial() {
+  while (SerialBT.available()) {
+    parseAILine(SerialBT.readStringUntil('\\n'));
+  }
+}
+`;
+  arduinoGenerator.definitions_['loop_ai_bt_poll'] = '  parseAIBluetoothSerial();\n';
 }
 
 arduinoGenerator.forBlock['ai_predicted_class'] = function(_block: Blockly.Block) {
@@ -476,6 +513,75 @@ arduinoGenerator.forBlock['input_potentiometer_read'] = function(block: Blockly.
   if (!isValidPin(pin)) return ['0', 0];
   return [`analogRead(${pin})`, 0];
 }
+
+// ── ESP-NOW runtime ──────────────────────────────────────────────────────
+// Direct ESP32-to-ESP32 radio link (no router/AP needed). Every board that
+// calls espnowSetup() both broadcasts to and listens from every other
+// nearby board on the same WiFi channel — no MAC address pairing required,
+// which keeps a two-board sender/receiver project approachable for
+// students. Callback signature matches the ESP32 Arduino core 3.x
+// (esp_now_recv_info_t*) API installed on this project's toolchain.
+function ensureESPNowRuntime(): void {
+  if (arduinoGenerator.definitions_['var_espnow_message']) return;
+
+  arduinoGenerator.definitions_['include_espnow'] = '#include <esp_now.h>';
+  arduinoGenerator.definitions_['include_wifi_espnow'] = '#include <WiFi.h>';
+  arduinoGenerator.definitions_['var_espnow_broadcast'] =
+    'uint8_t espnowBroadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};';
+  arduinoGenerator.definitions_['var_espnow_message'] = 'String espnowMessage = "";';
+  arduinoGenerator.definitions_['var_espnow_received_flag'] = 'volatile bool espnowReceivedFlag = false;';
+
+  arduinoGenerator.functionNames_['espnowOnDataRecv'] = `
+void espnowOnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+  char buf[251];
+  int copyLen = len < 250 ? len : 250;
+  memcpy(buf, incomingData, copyLen);
+  buf[copyLen] = '\\0';
+  espnowMessage = String(buf);
+  espnowReceivedFlag = true;
+}
+`;
+
+  arduinoGenerator.functionNames_['espnowSetup'] = `
+void espnowSetup() {
+  WiFi.mode(WIFI_STA);
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init failed");
+    return;
+  }
+  esp_now_register_recv_cb(espnowOnDataRecv);
+
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, espnowBroadcastAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  esp_now_add_peer(&peerInfo);
+}
+`;
+
+  arduinoGenerator.definitions_['setup_espnow'] = '  espnowSetup();';
+}
+
+arduinoGenerator.forBlock['espnow_init'] = function(_block: Blockly.Block) {
+  ensureESPNowRuntime();
+  return '';
+};
+
+arduinoGenerator.forBlock['espnow_send_message'] = function(block: Blockly.Block) {
+  ensureESPNowRuntime();
+  const text = arduinoGenerator.valueToCode(block, 'MESSAGE', 0) || '""';
+  return `{ String espnowOutgoing = String(${text}); esp_now_send(espnowBroadcastAddress, (const uint8_t*)espnowOutgoing.c_str(), espnowOutgoing.length()); }\n`;
+};
+
+arduinoGenerator.forBlock['espnow_message_received'] = function(_block: Blockly.Block) {
+  ensureESPNowRuntime();
+  return ['espnowReceivedFlag', 0];
+};
+
+arduinoGenerator.forBlock['espnow_received_message'] = function(_block: Blockly.Block) {
+  ensureESPNowRuntime();
+  return ['espnowMessage', 0];
+};
 
 arduinoGenerator.forBlock['wifi_connect'] = function(block: Blockly.Block) {
   if (!block.getInputTargetBlock('SSID') || !block.getInputTargetBlock('PASSWORD')) {
@@ -725,6 +831,12 @@ function ensureBluetoothIncludes(): void {
     '#endif';
   arduinoGenerator.definitions_['var_bluetooth'] = 'BluetoothSerial SerialBT;';
   ensureBluetoothOta();
+
+  // Mirror of the check in ensureAIRuntime() — covers the case where a
+  // Bluetooth block runs first and AI Vision blocks appear later.
+  if (arduinoGenerator.definitions_['var_ai_predicted_class']) {
+    ensureAIBluetoothBridge();
+  }
 }
 
 // Wireless re-upload over Bluetooth. Any project that uses Bluetooth also gets this
@@ -1063,6 +1175,48 @@ export function generateFullArduinoCode(
             globalVars.push(varTcs)
             injectedSetups.push(`  Wire.begin(${normalizePin(pins.sda)}, ${normalizePin(pins.scl)});`)
             injectedSetups.push(`  tcs.begin();`)
+            // Adafruit_TCS34725 has no per-channel getter (colorR()/etc. never
+            // existed) — every read goes through getRawData() for all four
+            // channels, then these helpers pick out what each block needs.
+            globalVars.push(`
+uint16_t tcsReadChannel(char channel) {
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
+  if (channel == 'R') return r;
+  if (channel == 'G') return g;
+  if (channel == 'B') return b;
+  return c;
+}
+
+uint16_t tcsReadLux() {
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
+  return tcs.calculateLux(r, g, b);
+}
+
+uint16_t tcsReadColorTemperature() {
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
+  return tcs.calculateColorTemperature(r, g, b);
+}
+
+// Simple ratio-based heuristic, not a calibrated color model — works best
+// with the sensor close to a brightly-lit, matte-colored surface.
+String tcsClassifyColor() {
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
+  if (c < 50) return "Black";
+  float total = (float)r + (float)g + (float)b;
+  if (total < 1) return "Black";
+  float rp = r / total, gp = g / total, bp = b / total;
+  if (rp > 0.5 && rp > gp && rp > bp) return "Red";
+  if (gp > 0.42 && gp > rp && gp > bp) return "Green";
+  if (bp > 0.42 && bp > rp && bp > gp) return "Blue";
+  if (rp > 0.30 && gp > 0.30 && bp < 0.25) return "Yellow";
+  if (c > 800 && rp < 0.42 && gp < 0.42 && bp < 0.42) return "White";
+  return "Unknown";
+}
+`)
           }
         }
       }
@@ -1176,8 +1330,26 @@ arduinoGenerator.forBlock['input_ir_analog_read'] = function(block: Blockly.Bloc
 
 arduinoGenerator.forBlock['input_color_read'] = function(block: Blockly.Block) {
   const color = block.getFieldValue('COLOR');
-  // Initialization happens in generateFullArduinoCode
-  return [`tcs.color${color}()`, 0]; // simplified API assumption
+  // tcs object + tcsReadChannel() helper are injected in generateFullArduinoCode
+  // whenever a color_sensor device is placed on the board.
+  return [`tcsReadChannel('${color}')`, 0];
+};
+
+arduinoGenerator.forBlock['input_color_clear'] = function(_block: Blockly.Block) {
+  return [`tcsReadChannel('C')`, 0];
+};
+
+arduinoGenerator.forBlock['input_color_lux'] = function(_block: Blockly.Block) {
+  return [`tcsReadLux()`, 0];
+};
+
+arduinoGenerator.forBlock['input_color_temperature'] = function(_block: Blockly.Block) {
+  return [`tcsReadColorTemperature()`, 0];
+};
+
+arduinoGenerator.forBlock['input_color_is'] = function(block: Blockly.Block) {
+  const colorName = block.getFieldValue('COLOR_NAME') || 'Red';
+  return [`(tcsClassifyColor() == "${colorName}")`, 0];
 };
 
 // 2. Motors

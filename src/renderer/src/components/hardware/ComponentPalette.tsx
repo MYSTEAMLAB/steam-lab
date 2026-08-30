@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import {
   Lightbulb, CircleDot, Volume2, Disc3, Sun, Thermometer, RotateCw,
-  Radar, Waves, Hand, Move, Fan, Grid3x3, Monitor, Search, MousePointerClick, Check
+  Radar, Waves, Hand, Move, Fan, Grid3x3, Monitor, Search, MousePointerClick, Check, Palette
 } from 'lucide-react'
 import { useAppStore } from '@renderer/store/useAppStore'
 import { useT } from '@renderer/lib/i18n/useT'
@@ -31,6 +31,7 @@ const COMPONENTS: ComponentDef[] = [
   { id: 'ultrasonic', name: 'Ultrasonic (HC-SR04)', category: 'Sensors & Inputs', icon: Waves, accent: 'bg-teal-600' },
   { id: 'touch', name: 'Touch Sensor (ESP32)', category: 'Sensors & Inputs', icon: Hand, accent: 'bg-teal-500' },
   { id: 'joystick', name: 'Analog Joystick', category: 'Sensors & Inputs', icon: Move, accent: 'bg-emerald-600' },
+  { id: 'color_sensor', name: 'Color Sensor (TCS34725)', category: 'Sensors & Inputs', icon: Palette, accent: 'bg-fuchsia-600' },
 
   { id: 'oled', name: 'OLED SSD1306', category: 'Displays', icon: Monitor, accent: 'bg-slate-800' }
 ]

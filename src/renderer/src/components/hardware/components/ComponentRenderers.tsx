@@ -294,6 +294,22 @@ export const OledComponent: React.FC<ComponentProps> = ({ device, onPinClick, ac
   )
 }
 
+export const ColorSensorComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-20" y="-20" width="40" height="40" rx="4" fill="#1e293b" stroke="#334155" strokeWidth="2" />
+      <circle cx="-7" cy="-6" r="5" fill="#ef4444" />
+      <circle cx="7" cy="-6" r="5" fill="#22c55e" />
+      <circle cx="0" cy="6" r="5" fill="#3b82f6" />
+      <rect x="-6" y="16" width="4" height="10" fill="#94a3b8" />
+      <rect x="2" y="16" width="4" height="10" fill="#94a3b8" />
+
+      <Hitbox x={-4} y={26} name="SDA" isActive={activeWireSource === `${device.id}:sda`} onClick={(n) => onPinClick(`${device.id}:sda`, -4, 26)} />
+      <Hitbox x={4} y={26} name="SCL" isActive={activeWireSource === `${device.id}:scl`} onClick={(n) => onPinClick(`${device.id}:scl`, 4, 26)} />
+    </g>
+  )
+}
+
 export const JoystickComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
   return (
     <g>

@@ -152,6 +152,11 @@ const readIrAnalog = (pin: string) => ({ type: 'input_ir_analog_read', fields: {
 const touchDetected = (pin: string) => ({ type: 'input_touch_read', fields: { PIN: pin } })
 const readTouchRaw = (pin: string) => ({ type: 'input_touch_raw', fields: { PIN: pin } })
 const readUltrasonic = (devId: string) => ({ type: 'input_ultrasonic_read', fields: { PIN: devId } })
+const readColor = (channel: 'R' | 'G' | 'B') => ({ type: 'input_color_read', fields: { COLOR: channel } })
+const readColorClear = () => ({ type: 'input_color_clear' })
+const readColorLux = () => ({ type: 'input_color_lux' })
+const readColorTemperature = () => ({ type: 'input_color_temperature' })
+const colorIs = (name: 'Red' | 'Green' | 'Blue' | 'Yellow' | 'White' | 'Black') => ({ type: 'input_color_is', fields: { COLOR_NAME: name } })
 const buttonPressed = (pin: string) => ({ type: 'input_button_pressed', fields: { PIN: pin } })
 const buttonRaw = (pin: string) => ({ type: 'input_button_read', fields: { PIN: pin } })
 const readJoy1 = (axis: 'VRX' | 'VRY') => ({ type: 'input_joystick1_read', fields: { AXIS: axis } })
@@ -166,6 +171,9 @@ const wifiConnect = (ssid: string, pass: string) => ({
   type: 'wifi_connect', inputs: { SSID: { block: str(ssid) }, PASSWORD: { block: str(pass) } }
 })
 const wifiGetIp = () => ({ type: 'wifi_get_ip' })
+const espnowInit = () => ({ type: 'espnow_init' })
+const espnowSend = (message: any) => ({ type: 'espnow_send_message', inputs: { MESSAGE: { block: message } } })
+const espnowReceivedMessage = () => ({ type: 'espnow_received_message' })
 const aiIsGesture = (g: string) => ({ type: 'ai_is_gesture', fields: { GESTURE: g } })
 const aiIsObject = (o: string) => ({ type: 'ai_is_object', fields: { OBJECT: o } })
 const aiIsShape = (s: string) => ({ type: 'ai_is_shape', fields: { SHAPE: s } })
@@ -332,6 +340,54 @@ export const EXAMPLES: ExampleProject[] = [
         serialPrint(readUltrasonic('us1')),
         ifElse(compare('LT', readUltrasonic('us1'), num(20)), digitalWrite('18', 'HIGH'), digitalWrite('18', 'LOW')),
         delay(300)
+      )
+    )
+  },
+
+  {
+    id: 'color-sensor-report',
+    name: 'Color Sensor: RGB Report',
+    category: 'Sensors',
+    description: 'Prints the raw Red, Green and Blue channel readings from the TCS34725 color sensor every half second — watch the numbers change as you hold different colored objects up to it.',
+    devices: [device('color1', 'color_sensor', { sda: '13', scl: '15' }, 120, 120)],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(serialPrint(readColor('R')), serialPrint(readColor('G')), serialPrint(readColor('B')), delay(500))
+    )
+  },
+  {
+    id: 'color-sorting-buzzer',
+    name: 'Color Sensor: Red Alert Buzzer',
+    category: 'Mini Projects',
+    description: 'Sounds the buzzer whenever the color sensor sees something red — the building block for a color-sorting machine.',
+    devices: [device('color1', 'color_sensor', { sda: '13', scl: '15' }, 120, 60), device('buzzer1', 'buzzer', '18', 320, 120)],
+    blocklyWorkspaceJson: program(null, stack(ifElse(colorIs('Red'), buzzerOn('18'), buzzerOff('18')), delay(200)))
+  },
+  {
+    id: 'color-name-oled',
+    name: 'Color Sensor: Name on OLED',
+    category: 'Displays',
+    description: 'Classifies whatever the color sensor is pointed at (Red, Green, Blue, Yellow, White or Black) and shows the name on the OLED screen.',
+    devices: [
+      device('color1', 'color_sensor', { sda: '13', scl: '15' }, 100, 60),
+      device('oled1', 'oled', { sda: '13', scl: '15' }, 320, 60)
+    ],
+    blocklyWorkspaceJson: program(
+      oledInit('oled1'),
+      stack(
+        oledClear('oled1'),
+        ifElse(colorIs('Red'), oledPrint('oled1', str('Red')),
+          ifElse(colorIs('Green'), oledPrint('oled1', str('Green')),
+            ifElse(colorIs('Blue'), oledPrint('oled1', str('Blue')),
+              ifElse(colorIs('Yellow'), oledPrint('oled1', str('Yellow')),
+                ifElse(colorIs('White'), oledPrint('oled1', str('White')),
+                  ifElse(colorIs('Black'), oledPrint('oled1', str('Black')), oledPrint('oled1', str('Unknown')))
+                )
+              )
+            )
+          )
+        ),
+        delay(400)
       )
     )
   },
@@ -697,6 +753,110 @@ export const EXAMPLES: ExampleProject[] = [
             stack(dcmotorSet('motor1', 'REV', num(200)), dcmotorSet('motor2', 'REV', num(200))),
             stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0)))
           )
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'rc-car-full-steering',
+    name: 'Joystick RC Car: Full Steering',
+    category: 'Mini Projects',
+    description:
+      'A more complete remote control car: push the joystick forward or back to drive, and left or right to turn while moving — one joystick, two motors, full directional control.',
+    devices: [
+      device('joy1', 'joystick', { vrx: '4', vry: '2' }, 100, 100),
+      device('motor1', 'dcmotor', { in1: '18', in2: '19' }, 320, 60),
+      device('motor2', 'dcmotor', { in1: '17', in2: '5' }, 320, 180)
+    ],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          compare('GT', readJoy1('VRY'), num(3000)),
+          ifElse(
+            compare('LT', readJoy1('VRX'), num(1000)),
+            stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'FWD', num(200))),
+            ifElse(
+              compare('GT', readJoy1('VRX'), num(3000)),
+              stack(dcmotorSet('motor1', 'FWD', num(200)), dcmotorSet('motor2', 'STOP', num(0))),
+              stack(dcmotorSet('motor1', 'FWD', num(200)), dcmotorSet('motor2', 'FWD', num(200)))
+            )
+          ),
+          ifElse(
+            compare('LT', readJoy1('VRY'), num(1000)),
+            stack(dcmotorSet('motor1', 'REV', num(200)), dcmotorSet('motor2', 'REV', num(200))),
+            stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0)))
+          )
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'crane-joystick-control',
+    name: 'Joystick-Controlled Crane (3 Motors)',
+    category: 'Mini Projects',
+    description:
+      'Two joysticks run a 3-motor crane: the first joystick\'s X-axis rotates the base and Y-axis raises or lowers the arm; the second joystick\'s Y-axis reels the winch hook in and out.',
+    devices: [
+      device('joy1', 'joystick', { vrx: '4', vry: '2' }, 80, 60),
+      device('joy2', 'joystick', { vrx: '26', vry: '25' }, 80, 260),
+      device('motor1', 'dcmotor', { in1: '18', in2: '19' }, 320, 40),
+      device('motor2', 'dcmotor', { in1: '17', in2: '5' }, 320, 160),
+      device('motor3', 'dcmotor', { in1: '23', in2: '22' }, 320, 280)
+    ],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          compare('GT', readJoy1('VRX'), num(3000)), dcmotorSet('motor1', 'FWD', num(200)),
+          ifElse(compare('LT', readJoy1('VRX'), num(1000)), dcmotorSet('motor1', 'REV', num(200)), dcmotorSet('motor1', 'STOP', num(0)))
+        ),
+        ifElse(
+          compare('GT', readJoy1('VRY'), num(3000)), dcmotorSet('motor2', 'FWD', num(200)),
+          ifElse(compare('LT', readJoy1('VRY'), num(1000)), dcmotorSet('motor2', 'REV', num(200)), dcmotorSet('motor2', 'STOP', num(0)))
+        ),
+        ifElse(
+          compare('GT', readJoy2('VRY'), num(3000)), dcmotorSet('motor3', 'FWD', num(200)),
+          ifElse(compare('LT', readJoy2('VRY'), num(1000)), dcmotorSet('motor3', 'REV', num(200)), dcmotorSet('motor3', 'STOP', num(0)))
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'joystick-dual-led-brightness',
+    name: 'Joystick Controls Two LED Brightnesses',
+    category: 'Mini Projects',
+    description: 'X-axis fades one LED, Y-axis fades the other — a simple way to see how joystick readings map onto PWM output.',
+    devices: [
+      device('joy1', 'joystick', { vrx: '4', vry: '2' }, 100, 100),
+      device('led1', 'led', '18', 300, 60),
+      device('led2', 'led', '17', 300, 180)
+    ],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        analogWrite('18', mathArith('DIVIDE', readJoy1('VRX'), num(16))),
+        analogWrite('17', mathArith('DIVIDE', readJoy1('VRY'), num(16))),
+        delay(30)
+      )
+    )
+  },
+  {
+    id: 'joystick-corner-alarm',
+    name: 'Joystick Corner Alarm',
+    category: 'Mini Projects',
+    description: 'Sounds the buzzer only when the joystick is pushed into the top-right corner — a simple demo of combining two conditions with AND.',
+    devices: [device('joy1', 'joystick', { vrx: '4', vry: '2' }, 100, 100), device('buzzer1', 'buzzer', '18', 320, 100)],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          andOr('AND', compare('GT', readJoy1('VRX'), num(3500)), compare('GT', readJoy1('VRY'), num(3500))),
+          buzzerOn('18'),
+          buzzerOff('18')
         ),
         delay(100)
       )
@@ -1160,6 +1320,38 @@ export const EXAMPLES: ExampleProject[] = [
     )
   },
   {
+    id: 'bluetooth-ai-gesture-car',
+    name: 'Bluetooth: AI Gesture Car',
+    category: 'Bluetooth',
+    description:
+      'Pair the board over Bluetooth (Port Selection), then show the webcam a gesture in the AI Vision tab to drive a 2-motor car — no USB cable needed once paired. Open Palm forward, Closed Fist stop, Thumb Up turns right, Thumb Down turns left.',
+    devices: [
+      device('motor1', 'dcmotor', { in1: '18', in2: '19' }, 120, 60),
+      device('motor2', 'dcmotor', { in1: '17', in2: '5' }, 120, 200)
+    ],
+    blocklyWorkspaceJson: program(
+      btBegin('MY_STEAM_LAB_CAR'),
+      stack(
+        ifElse(
+          aiIsGesture('Open_Palm'),
+          stack(dcmotorSet('motor1', 'FWD', num(200)), dcmotorSet('motor2', 'FWD', num(200))),
+          ifElse(
+            aiIsGesture('Thumb_Up'),
+            stack(dcmotorSet('motor1', 'FWD', num(200)), dcmotorSet('motor2', 'STOP', num(0))),
+            ifElse(
+              aiIsGesture('Thumb_Down'),
+              stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'FWD', num(200))),
+              ifElse(
+                aiIsGesture('Closed_Fist'),
+                stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0)))
+              )
+            )
+          )
+        )
+      )
+    )
+  },
+  {
     id: 'bluetooth-temp-report',
     name: 'Bluetooth: Temperature Reporter',
     category: 'Bluetooth',
@@ -1206,6 +1398,36 @@ export const EXAMPLES: ExampleProject[] = [
     blocklyWorkspaceJson: program(
       stack(oledInit('oled1'), wifiConnect('YOUR_WIFI_NAME', 'YOUR_PASSWORD'), oledPrint('oled1', wifiGetIp())),
       stack(delay(5000))
+    )
+  },
+  {
+    id: 'espnow-sender',
+    name: 'ESP-NOW: Wireless Sender',
+    category: 'WiFi & AI',
+    description:
+      'Broadcasts a "PING" message directly to another nearby ESP32 every second — no WiFi router needed. Flash this to one board and pair it with the "ESP-NOW: Wireless Receiver" example on a second board.',
+    devices: [device('led1', 'led', '18', 120, 120)],
+    blocklyWorkspaceJson: program(
+      espnowInit(),
+      stack(espnowSend(str('PING')), digitalWrite('18', 'HIGH'), delay(100), digitalWrite('18', 'LOW'), delay(900))
+    )
+  },
+  {
+    id: 'espnow-receiver',
+    name: 'ESP-NOW: Wireless Receiver',
+    category: 'WiFi & AI',
+    description:
+      'Flashes an LED each time it wirelessly receives a "PING" from another nearby ESP32 — no wires between the two boards, just power both on. Pair with the "ESP-NOW: Wireless Sender" example on a second board.',
+    devices: [device('led1', 'led', '18', 120, 120)],
+    blocklyWorkspaceJson: program(
+      espnowInit(),
+      stack(
+        ifElse(
+          compare('EQ', espnowReceivedMessage(), str('PING')),
+          stack(digitalWrite('18', 'HIGH'), delay(150), digitalWrite('18', 'LOW'))
+        ),
+        delay(50)
+      )
     )
   },
   {

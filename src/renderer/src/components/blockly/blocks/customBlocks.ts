@@ -466,6 +466,59 @@ export function registerCustomBlocks(): void {
     }
   }
 
+  // ── ESP-NOW Blocks (direct ESP32-to-ESP32 wireless, no router needed) ─────
+  // Broadcast-only: every board that calls "ESP-NOW Start" both sends to and
+  // listens for every other nearby board on the same WiFi channel, so
+  // students never have to look up or hardcode a peer's MAC address to pair
+  // a sender/receiver pair.
+
+  Blockly.Blocks['espnow_init'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('ESP-NOW Start')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('wifi_blocks')
+      this.setTooltip('Starts direct wireless ESP32-to-ESP32 communication (ESP-NOW). No WiFi router needed — every nearby board running this also receives what is sent.')
+      this.setHelpUrl('')
+    }
+  }
+
+  Blockly.Blocks['espnow_send_message'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('MESSAGE')
+        .setCheck(null)
+        .appendField('ESP-NOW Send')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('wifi_blocks')
+      this.setTooltip('Wirelessly sends text or a number to every other nearby board running ESP-NOW.')
+      this.setHelpUrl('')
+    }
+  }
+
+  Blockly.Blocks['espnow_message_received'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('ESP-NOW Message Received?')
+      this.setOutput(true, 'Boolean')
+      this.setStyle('wifi_blocks')
+      this.setTooltip('True once this board has received at least one ESP-NOW message from another board.')
+      this.setHelpUrl('')
+    }
+  }
+
+  Blockly.Blocks['espnow_received_message'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('ESP-NOW Received Message')
+      this.setOutput(true, 'String')
+      this.setStyle('wifi_blocks')
+      this.setTooltip('The most recent text received over ESP-NOW from another board.')
+      this.setHelpUrl('')
+    }
+  }
+
   // ── New Phase 4 Input Blocks ──────────────────────────────────────────────
 
   // IR Sensor
@@ -791,7 +844,55 @@ Blockly.Blocks['input_color_read'] = {
       ]), "COLOR");
     this.setOutput(true, "Number");
     this.setColour('#5B67C4');
-    this.setTooltip("Read RGB value from the Color Sensor (TCS34725).");
+    this.setTooltip("Read the raw Red/Green/Blue channel value (0-65535) from the Color Sensor (TCS34725).");
+  }
+};
+
+Blockly.Blocks['input_color_clear'] = {
+  init: function() {
+    this.appendDummyInput()
+      .appendField("Read Color Sensor Clear/Ambient Light");
+    this.setOutput(true, "Number");
+    this.setColour('#5B67C4');
+    this.setTooltip("Read the raw Clear (ambient light) channel value (0-65535) from the Color Sensor (TCS34725).");
+  }
+};
+
+Blockly.Blocks['input_color_lux'] = {
+  init: function() {
+    this.appendDummyInput()
+      .appendField("Read Color Sensor Light Level (Lux)");
+    this.setOutput(true, "Number");
+    this.setColour('#5B67C4');
+    this.setTooltip("Read the estimated light intensity in lux from the Color Sensor (TCS34725).");
+  }
+};
+
+Blockly.Blocks['input_color_temperature'] = {
+  init: function() {
+    this.appendDummyInput()
+      .appendField("Read Color Sensor Temperature (K)");
+    this.setOutput(true, "Number");
+    this.setColour('#5B67C4');
+    this.setTooltip("Read the estimated color temperature in Kelvin from the Color Sensor (TCS34725).");
+  }
+};
+
+Blockly.Blocks['input_color_is'] = {
+  init: function() {
+    this.appendDummyInput()
+      .appendField("Detected Color Is")
+      .appendField(new Blockly.FieldDropdown([
+        ["Red", "Red"],
+        ["Green", "Green"],
+        ["Blue", "Blue"],
+        ["Yellow", "Yellow"],
+        ["White", "White"],
+        ["Black", "Black"]
+      ]), "COLOR_NAME");
+    this.setOutput(true, "Boolean");
+    this.setColour('#5B67C4');
+    this.setTooltip("True if the Color Sensor's simple color classifier currently matches this color. A basic heuristic — may need different lighting/distance to classify reliably.");
   }
 };
 
