@@ -3,7 +3,11 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '@renderer/store/useAppStore'
 import { InteractiveBoard } from './InteractiveBoard'
 import { boardRegistry } from '@shared/boards'
-import { LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent, BuzzerComponent } from './components/ComponentRenderers'
+import {
+  LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent, BuzzerComponent,
+  PotentiometerComponent, TempSensorComponent, DHT11Component, IRSensorComponent, TouchSensorComponent,
+  UltrasonicComponent, DCMotorComponent, MotorDriverComponent, OledComponent
+} from './components/ComponentRenderers'
 import { COMPONENT_PIN_OFFSETS } from './components/pinOffsets'
 import { PropertiesPanel } from './PropertiesPanel'
 
@@ -232,6 +236,15 @@ export const HardwareCanvas: React.FC = () => {
             if (device.type === 'ldr') Renderer = LDRComponent
             if (device.type === 'joystick') Renderer = JoystickComponent
             if (device.type === 'buzzer') Renderer = BuzzerComponent
+            if (device.type === 'potentiometer') Renderer = PotentiometerComponent
+            if (device.type === 'temp') Renderer = TempSensorComponent
+            if (device.type === 'dht11') Renderer = DHT11Component
+            if (device.type === 'ir') Renderer = IRSensorComponent
+            if (device.type === 'touch') Renderer = TouchSensorComponent
+            if (device.type === 'ultrasonic') Renderer = UltrasonicComponent
+            if (device.type === 'dcmotor') Renderer = DCMotorComponent
+            if (device.type === 'motor_driver') Renderer = MotorDriverComponent
+            if (device.type === 'oled') Renderer = OledComponent
 
             const mappedPins: string[] = []
             if (typeof device.mappedPin === 'string' && device.mappedPin) {

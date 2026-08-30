@@ -90,7 +90,7 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'input_potentiometer_read' },
         { kind: 'block', type: 'input_button_read' },
         { kind: 'block', type: 'input_button_pressed' },
-        { kind: 'block', type: 'input_ldr_read' },
+        { kind: 'block', type: 'input_ldr_read_analog' },
         { kind: 'block', type: 'input_ldr_is_dark' },
         { kind: 'block', type: 'input_ir_read' },
         { kind: 'block', type: 'input_ir_analog_read' },
@@ -100,6 +100,35 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'input_touch_read' },
         { kind: 'block', type: 'input_touch_raw' },
         { kind: 'block', type: 'input_color_read' }
+      ]
+    },
+
+    // ── 6b. AI Vision ─────────────────────────────────────────────────────
+    {
+      kind: 'category',
+      name: 'AI Vision',
+      categorystyle: 'ai_category',
+      contents: [
+        { kind: 'block', type: 'ai_predicted_class' },
+        { kind: 'block', type: 'ai_prediction_confidence' },
+        { kind: 'block', type: 'ai_is_class' },
+        { kind: 'block', type: 'ai_mic_level' },
+        { kind: 'block', type: 'ai_hand_gesture' },
+        { kind: 'block', type: 'ai_gesture_confidence' },
+        { kind: 'block', type: 'ai_is_gesture' },
+        { kind: 'block', type: 'ai_hand_detected' },
+        { kind: 'block', type: 'ai_detected_object' },
+        { kind: 'block', type: 'ai_object_confidence' },
+        { kind: 'block', type: 'ai_is_object' },
+        { kind: 'block', type: 'ai_object_detected' },
+        { kind: 'block', type: 'ai_detected_shape' },
+        { kind: 'block', type: 'ai_shape_confidence' },
+        { kind: 'block', type: 'ai_is_shape' },
+        { kind: 'block', type: 'ai_shape_detected' },
+        { kind: 'block', type: 'ai_detected_expression' },
+        { kind: 'block', type: 'ai_expression_confidence' },
+        { kind: 'block', type: 'ai_is_expression' },
+        { kind: 'block', type: 'ai_face_detected' }
       ]
     },
 
@@ -143,6 +172,8 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
       contents: [
         { kind: 'block', type: 'oled_init' },
         { kind: 'block', type: 'oled_print' },
+        { kind: 'block', type: 'oled_text_size' },
+        { kind: 'block', type: 'oled_icon' },
         { kind: 'block', type: 'oled_show_var' },
         { kind: 'block', type: 'oled_show_char' },
         { kind: 'block', type: 'oled_blink' },

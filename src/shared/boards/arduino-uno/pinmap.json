@@ -192,7 +192,7 @@
       "type": "input",
       "preferredPin": "A1",
       "compat": [
-        "ANALOG_IN"
+        "DIGITAL_IN"
       ]
     },
     "servo": {

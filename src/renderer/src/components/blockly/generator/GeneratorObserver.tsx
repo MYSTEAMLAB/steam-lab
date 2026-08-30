@@ -11,18 +11,23 @@ export const GeneratorObserver: React.FC = () => {
   const selectedBoard = useAppStore(s => s.selectedBoard)
   const blocklyWorkspaceJson = useAppStore(s => s.blocklyWorkspaceJson)
   const boardLayouts = useAppStore(s => s.boardLayouts)
-  
+  const isCodeManuallyEdited = useAppStore(s => s.isCodeManuallyEdited)
+
   const setGeneratedCode = useAppStore(s => s.setGeneratedCode)
   const setWarnings = useAppStore(s => s.setWarnings)
-  
+
   const previousCodeRef = useRef<string>('')
 
   useEffect(() => {
+    // The user has taken over the Code panel directly — leave their code
+    // alone until they explicitly resync from Blocks (see MonacoEditorPanel).
+    if (isCodeManuallyEdited) return
+
     if (!selectedBoard) {
       setGeneratedCode('// Select a board to generate code.')
       return
     }
-    
+
     const boardId = selectedBoard.id
     const layout = boardLayouts[boardId]
     const devices = layout?.devices || []
@@ -53,7 +58,7 @@ export const GeneratorObserver: React.FC = () => {
       headlessWorkspace.dispose()
     }
     
-  }, [selectedBoard, blocklyWorkspaceJson, boardLayouts, setGeneratedCode, setWarnings])
+  }, [selectedBoard, blocklyWorkspaceJson, boardLayouts, isCodeManuallyEdited, setGeneratedCode, setWarnings])
 
   return null
 }

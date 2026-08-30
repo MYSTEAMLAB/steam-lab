@@ -1,6 +1,8 @@
 import { app, Menu, dialog, BrowserWindow, shell } from 'electron';
 import { getRecentProjects } from './ipc/projectHandlers';
+import { getExampleMenuTree } from '@shared/examples';
 import { basename } from 'path';
+import { checkForUpdatesManually } from './updater';
 
 export async function setupApplicationMenu() {
   const showComingSoon = (item: Electron.MenuItem, window: any) => {
@@ -50,12 +52,6 @@ Keyboard Shortcuts:
     else dialog.showMessageBox({ type: 'info', title: 'Keyboard Shortcuts', message });
   };
 
-  const showUpdates = (window: any) => {
-    const message = 'You are currently on the latest version (v1.0.0).';
-    if (window) dialog.showMessageBox(window, { type: 'info', title: 'Check for Updates', message });
-    else dialog.showMessageBox({ type: 'info', title: 'Check for Updates', message });
-  };
-
   const showAbout = (window: any) => {
     const message = 'MY STEAM LAB\\nVersion 1.0.0\\n\\nA visual block-based IoT programming environment built for makers and educators.';
     if (window) dialog.showMessageBox(window, { type: 'info', title: 'About MY STEAM LAB', message });
@@ -75,6 +71,16 @@ Keyboard Shortcuts:
       }))
     : [{ label: 'No Recent Projects', enabled: false }];
 
+  // Ready-made projects — blocks and their hardware together, so a student can
+  // load one and press Verify without wiring anything up first.
+  const examplesSubmenu: Electron.MenuItemConstructorOptions[] = getExampleMenuTree().map(group => ({
+    label: group.category,
+    submenu: group.items.map(item => ({
+      label: item.name,
+      click: () => dispatchAction(`open-example|${item.id}`)
+    }))
+  }));
+
   const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'FILE',
@@ -84,6 +90,7 @@ Keyboard Shortcuts:
         { label: 'Save Project', click: () => dispatchAction('save-project') },
         { label: 'Save Project As', click: () => dispatchAction('save-project-as') },
         { label: 'Recent Projects', submenu: recentSubmenu },
+        { label: 'Examples', submenu: examplesSubmenu },
         { type: 'separator' },
         { label: 'Export Arduino Code (.ino)', click: () => dispatchAction('export-ino') },
         { label: 'Export Project (.msl)', click: (item, window) => showInfo(window, 'Export Project', 'Project exporting (.msl) will be fully supported in the next major update. For now, please use "Save Project" to save your work.') },
@@ -144,12 +151,14 @@ Keyboard Shortcuts:
     {
       label: 'HELP',
       submenu: [
-        { label: 'User Guide', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab#readme') },
+        { label: 'User Guide', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab#readme') },
         { label: 'Keyboard Shortcuts', click: (item, window) => showShortcuts(window) },
-        { label: 'Documentation', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab/wiki') },
+        { label: 'Documentation', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab/wiki') },
         { type: 'separator' },
-        { label: 'Report Issue', click: () => shell.openExternal('https://github.com/Tech-Anshika/streamlab/issues') },
-        { label: 'Check for Updates', click: (item, window) => showUpdates(window) },
+        { label: 'Report Issue', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab/issues') },
+        { label: 'Check for Updates', click: () => checkForUpdatesManually() },
+        { type: 'separator' },
+        { label: 'Toggle Developer Tools', role: 'toggleDevTools' },
         { type: 'separator' },
         { label: 'About MY STEAM LAB', click: () => shell.openExternal('https://www.mysteamlab.com') }
       ]

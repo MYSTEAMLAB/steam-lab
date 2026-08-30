@@ -3,6 +3,11 @@
     "out/**/*",
     "src/shared/boards/**/*"
   ],
+  "publish": {
+    "provider": "github",
+    "owner": "MYSTEAMLAB",
+    "repo": "steam-lab"
+  },
   "win": {
     "target": [{ "target": "nsis", "arch": ["x64"] }],
     "icon": "resources/icon.ico"
@@ -11,6 +16,7 @@
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "installerIcon": "resources/icon.ico",
-    "uninstallerIcon": "resources/icon.ico"
+    "uninstallerIcon": "resources/icon.ico",
+    "include": "build/installer.nsh"
   }
 }

@@ -2,6 +2,17 @@ import { boardRegistry } from './index'
 import type { PlacedDevice } from '../types/project'
 import type { PinInterface } from '../types/board'
 
+// ── Intentional LED / Buzzer / Motor pin sharing ─────────────────────────────
+// Project-specific request: each numbered port drives its LED, buzzer and motor
+// off ONE shared GPIO pin — port 1 on GPIO18, port 2 on GPIO17, port 3 on GPIO22,
+// port 4 on GPIO16. (Ports 1/2/4 reach it through the motor's in1; port 3's motor
+// carries GPIO22 as its in2 instead — see dcmotor_3 in the ESP32 pinmap.)
+// Every other pin/component combination still goes through the normal
+// one-device-per-pin safety check below — this is a narrow, explicit exception,
+// not a general relaxation of it.
+const SHARED_LED_BUZZER_MOTOR_PINS = new Set(['GPIO18', 'GPIO17', 'GPIO22', 'GPIO16'])
+const SHARED_GROUP_TYPES = new Set(['led', 'buzzer', 'dcmotor'])
+
 export interface ComponentPinRequirements {
   type: string
   /**
@@ -39,13 +50,18 @@ export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = 
   },
   ldr: {
     type: 'Analog Input',
+    // The photoresistor forms a voltage divider, so its output is an analog level.
+    // It must land on an ADC pin — a plain digital pin reads LOW nearly always.
     requiredInterfaces: ['ANALOG_IN'],
     description: 'Requires an analog input pin (ADC)'
   },
   temp: {
-    type: 'Analog Input',
-    requiredInterfaces: ['ANALOG_IN'],
-    description: 'Requires an analog input pin (ADC)'
+    type: 'Digital Input',
+    requiredInterfaces: ['DIGITAL_IN'],
+    // OneWire must both drive (write) and sense (read) the data line for reset/bit
+    // pulses, so it cannot sit on an input-only GPIO (e.g. ESP32 GPIO34/35/36/39).
+    mustNotBeInputOnly: true,
+    description: 'Requires a digital pin (OneWire data line for DS18B20)'
   },
   servo: {
     type: 'PWM Output',
@@ -98,15 +114,6 @@ export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = 
     },
     mustNotBeInputOnly: true,
     description: 'Requires two PWMs and four digital direction pins'
-  },
-  bluetooth: {
-    type: 'Serial Communication',
-    requiredInterfaces: {
-      tx: ['DIGITAL_OUT'],
-      rx: ['DIGITAL_IN']
-    },
-    mustNotBeInputOnly: true,
-    description: 'Requires TX and RX capable pins'
   },
   color_sensor: {
     type: 'I2C Color Sensor',
@@ -165,17 +172,24 @@ export function validateDeviceAssignment(device: PlacedDevice, boardId: string, 
 
   // Check for duplicates
   let allMapped = Array.isArray(reqs.requiredInterfaces) ? [device.mappedPin as string] : Object.values(device.mappedPin as Record<string, string>);
-  
+
   for (const p of allMapped) {
     if (!p) continue;
     let count = 0;
+    let allSharedGroupTypes = SHARED_GROUP_TYPES.has(device.type);
     for (const other of currentDevices) {
-      if (typeof other.mappedPin === 'string' && other.mappedPin === p) count++;
-      else if (typeof other.mappedPin === 'object' && other.mappedPin) {
-        if (Object.values(other.mappedPin).includes(p)) count++;
+      const otherUsesPin = (typeof other.mappedPin === 'string' && other.mappedPin === p)
+        || (typeof other.mappedPin === 'object' && other.mappedPin !== null && Object.values(other.mappedPin).includes(p));
+      if (otherUsesPin) {
+        count++;
+        if (!SHARED_GROUP_TYPES.has(other.type)) allSharedGroupTypes = false;
       }
     }
-    if (count > 1) {
+    // LED/Buzzer/Motor are explicitly allowed to share GPIO18/17/16 (see
+    // SHARED_LED_BUZZER_MOTOR_PINS above) — every other pin/component
+    // combination still hits the normal duplicate-pin rejection.
+    const isAllowedSharedPin = SHARED_LED_BUZZER_MOTOR_PINS.has(p) && allSharedGroupTypes;
+    if (count > 1 && !isAllowedSharedPin) {
       return { valid: false, error: `Duplicate pin: ${p}` }
     }
   }
@@ -252,14 +266,6 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
   for (const device of currentDevices) {
     if (typeof device.mappedPin === 'string' && device.mappedPin) {
       assignedPins.add(device.mappedPin)
-      
-      // Automatically reserve the hidden paired ground pin for M-port LEDs
-      if (device.type === 'led') {
-        const pairedGnd: Record<string, string> = { 'GPIO18': 'GPIO19', 'GPIO17': 'GPIO5', 'GPIO22': 'GPIO23', 'GPIO16': 'GPIO21' };
-        if (pairedGnd[device.mappedPin]) {
-          assignedPins.add(pairedGnd[device.mappedPin])
-        }
-      }
     } else if (typeof device.mappedPin === 'object' && device.mappedPin !== null) {
       for (const p of Object.values(device.mappedPin)) {
         if (typeof p === 'string' && p) assignedPins.add(p)
@@ -267,20 +273,64 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
     }
   }
 
+  // A pin already in assignedPins still counts as "free" when it's one of the
+  // designated LED/Buzzer/Motor shared pins and this device is one of the
+  // types allowed to share it (see SHARED_LED_BUZZER_MOTOR_PINS above).
+  const isPinOccupiedFor = (pinName: string): boolean => {
+    if (!assignedPins.has(pinName)) return false
+    return !(SHARED_LED_BUZZER_MOTOR_PINS.has(pinName) && SHARED_GROUP_TYPES.has(deviceType))
+  }
+
+  // ── LED / Buzzer / Motor: fixed ordinal assignment ────────────────────────
+  // These three types intentionally reuse a small set of shared pins, so
+  // "skip to the next free slot" doesn't apply (LED3/Buzzer3 deliberately
+  // reuse the LED1/Buzzer1/Motor1 pin rather than getting their own) — the
+  // Nth device of this type placed always maps to the Nth indexed peripheral
+  // entry (led/led_2/led_3/led_4, etc.), regardless of occupancy.
+  if (SHARED_GROUP_TYPES.has(deviceType)) {
+    const ordinal = currentDevices.filter(d => d.type === deviceType).length + 1
+    const ordinalPeripheral = pinMap.peripherals?.[ordinal === 1 ? deviceType : `${deviceType}_${ordinal}`]
+    if (ordinalPeripheral?.preferredPin) {
+      const preferred = ordinalPeripheral.preferredPin
+      if (Array.isArray(reqs.requiredInterfaces)) {
+        if (typeof preferred === 'string' && !isPinOccupiedFor(preferred) && pinMap.pins[preferred]) {
+          return preferred
+        }
+      } else if (typeof preferred === 'object' && !Array.isArray(preferred)) {
+        const allocation: Record<string, string> = {}
+        const usedInThisPass = new Set<string>()
+        let allFound = true
+        for (const key of Object.keys(reqs.requiredInterfaces)) {
+          const preferredPin = (preferred as Record<string, string>)[key]
+          if (preferredPin && !isPinOccupiedFor(preferredPin) && !usedInThisPass.has(preferredPin) && pinMap.pins[preferredPin]) {
+            allocation[key] = preferredPin
+            usedInThisPass.add(preferredPin)
+          } else {
+            allFound = false
+            break
+          }
+        }
+        if (allFound) return allocation
+      }
+    }
+    // Fall through to the generic logic below if the ordinal slot isn't
+    // defined (5th+ device of this type) or its pins are unexpectedly taken.
+  }
+
   // ── Try preferredPin from pinmap first ────────────────────────────────────
   let peripheral = pinMap.peripherals?.[deviceType]
-  
+
   // If the base peripheral's preferred pins are fully occupied, check for _2, _3, etc.
   if (peripheral?.preferredPin) {
     let baseOccupied = false;
     if (typeof peripheral.preferredPin === 'string') {
-      if (assignedPins.has(peripheral.preferredPin)) baseOccupied = true;
+      if (isPinOccupiedFor(peripheral.preferredPin)) baseOccupied = true;
     } else if (typeof peripheral.preferredPin === 'object' && !Array.isArray(peripheral.preferredPin)) {
       for (const p of Object.values(peripheral.preferredPin)) {
-        if (assignedPins.has(p as string)) baseOccupied = true;
+        if (isPinOccupiedFor(p as string)) baseOccupied = true;
       }
     }
-    
+
     if (baseOccupied) {
       // Find the next available indexed peripheral (e.g., dcmotor_2)
       for (let i = 2; i <= 8; i++) {
@@ -288,10 +338,10 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
         if (nextPeriph?.preferredPin) {
           let nextOccupied = false;
           if (typeof nextPeriph.preferredPin === 'string') {
-            if (assignedPins.has(nextPeriph.preferredPin)) nextOccupied = true;
+            if (isPinOccupiedFor(nextPeriph.preferredPin)) nextOccupied = true;
           } else if (typeof nextPeriph.preferredPin === 'object' && !Array.isArray(nextPeriph.preferredPin)) {
             for (const p of Object.values(nextPeriph.preferredPin)) {
-              if (assignedPins.has(p as string)) nextOccupied = true;
+              if (isPinOccupiedFor(p as string)) nextOccupied = true;
             }
           }
           if (!nextOccupied) {
@@ -308,7 +358,7 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
 
     if (Array.isArray(reqs.requiredInterfaces)) {
       // Single-pin component: try preferred string pin
-      if (typeof preferred === 'string' && !assignedPins.has(preferred)) {
+      if (typeof preferred === 'string' && !isPinOccupiedFor(preferred)) {
         const pinDef = pinMap.pins[preferred]
         if (pinDef) return preferred
       }
@@ -320,7 +370,7 @@ export function findAvailablePin(deviceType: string, boardId: string, currentDev
         let allFound = true
         for (const key of Object.keys(reqs.requiredInterfaces)) {
           const preferredPin = (preferred as Record<string, string>)[key]
-          if (preferredPin && !assignedPins.has(preferredPin) && !usedInThisPass.has(preferredPin) && pinMap.pins[preferredPin]) {
+          if (preferredPin && !isPinOccupiedFor(preferredPin) && !usedInThisPass.has(preferredPin) && pinMap.pins[preferredPin]) {
             allocation[key] = preferredPin
             usedInThisPass.add(preferredPin)
           } else {

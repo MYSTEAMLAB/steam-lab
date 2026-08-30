@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
+import { getExample } from '@shared/examples'
 
 export function useProjectManager() {
   const store = useAppStore()
@@ -70,6 +71,31 @@ export function useProjectManager() {
         }
       }
       
+      // File ▸ Examples — loads a built-in project: its blocks AND the hardware
+      // components they refer to, so it is ready to Verify immediately. It opens
+      // unsaved (no file path) so saving it can't overwrite the shipped example.
+      else if (action.startsWith('open-example|')) {
+        if (state.isDirty) {
+          if (!window.confirm('You have unsaved changes. Are you sure you want to open an example?')) {
+            return
+          }
+        }
+        const example = getExample(action.split('|')[1])
+        if (!example) return
+
+        const boardId = state.selectedBoard?.id || 'esp32'
+        state.loadProject({
+          projectName: example.name,
+          savedFilePath: null,
+          selectedBoard: state.selectedBoard,
+          boardLayouts: { [boardId]: { devices: example.devices, wires: [] } },
+          blocklyWorkspaceJson: example.blocklyWorkspaceJson
+        })
+        window.api.project.clearRecovery()
+        state.setSaveStatus(`Opened example: ${example.name}`)
+        setTimeout(() => state.setSaveStatus(null), 4000)
+      }
+
       else if (action.startsWith('open-recent|')) {
         if (state.isDirty) {
           if (!window.confirm('You have unsaved changes. Are you sure you want to open a different project?')) {

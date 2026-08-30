@@ -48,6 +48,11 @@ export const customTheme = Blockly.Theme.defineTheme('scratch-dark', {
       colourPrimary: '#FF661A', // System reddish orange
       colourSecondary: '#E65C17',
       colourTertiary: '#CC5214'
+    },
+    ai_blocks: {
+      colourPrimary: '#8A2BE2', // AI Vision purple (distinct from output_blocks' violet)
+      colourSecondary: '#7420C4',
+      colourTertiary: '#631BAA'
     }
   },
   categoryStyles: {
@@ -58,7 +63,8 @@ export const customTheme = Blockly.Theme.defineTheme('scratch-dark', {
     input_category: { colour: '#FF6680' },
     output_category: { colour: '#9966FF' },
     wifi_category: { colour: '#FFAB19' },
-    system_category: { colour: '#FF661A' }
+    system_category: { colour: '#FF661A' },
+    ai_category: { colour: '#8A2BE2' }
   },
   componentStyles: {
     workspaceBackgroundColour: '#ffffff',

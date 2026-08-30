@@ -166,7 +166,35 @@ arduinoGenerator.forBlock['output_servo_write'] = function(block: Blockly.Block)
   if (!isValidPin(pin)) return '';
   const angle = arduinoGenerator.valueToCode(block, 'ANGLE', 0) || '90';
   const servoObj = `servo_${pin}`;
-  arduinoGenerator.definitions_['include_servo'] = '#include <Servo.h>';
+  arduinoGenerator.definitions_['include_servo'] = `#if defined(ESP32)
+class Servo {
+  public:
+    int _pin = -1;
+    void attach(int pin) {
+      _pin = pin;
+#if !defined(ESP_ARDUINO_VERSION_MAJOR) || ESP_ARDUINO_VERSION_MAJOR < 3
+      int channel = pin % 16;
+      ledcSetup(channel, 50, 16);
+      ledcAttachPin(_pin, channel);
+#else
+      ledcAttach(_pin, 50, 16);
+#endif
+    }
+    void write(int angle) {
+      if (_pin == -1) return;
+      if (angle < 0) angle = 0;
+      if (angle > 180) angle = 180;
+      uint32_t duty = 3276 + ((angle * (6553 - 3276)) / 180);
+#if !defined(ESP_ARDUINO_VERSION_MAJOR) || ESP_ARDUINO_VERSION_MAJOR < 3
+      ledcWrite(_pin % 16, duty);
+#else
+      ledcWrite(_pin, duty);
+#endif
+    }
+};
+#else
+#include <Servo.h>
+#endif`;
   arduinoGenerator.definitions_[`var_${servoObj}`] = `Servo ${servoObj};`;
   arduinoGenerator.definitions_[`setup_${servoObj}`] = `  ${servoObj}.attach(${pin});`;
   return `${servoObj}.write(${angle});\n`;
@@ -210,28 +238,231 @@ arduinoGenerator.forBlock['input_button_pressed'] = function(block: Blockly.Bloc
   return [`(digitalRead(${pin}) == LOW)`, 0];
 }
 
-arduinoGenerator.forBlock['input_ldr_read'] = function(block: Blockly.Block) {
+// The LDR is a voltage divider on an ADC pin, so it must be read with analogRead().
+// digitalRead() only flips above ~0.75*Vcc, which the divider rarely reaches — that
+// made the block report 0 permanently. 'input_ldr_read_digital' is the legacy block id
+// kept for older saved projects; it now generates the same analog read.
+const ldrAnalogRead = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['0', 0];
   return [`analogRead(${pin})`, 0];
 }
+arduinoGenerator.forBlock['input_ldr_read_analog'] = ldrAnalogRead
+arduinoGenerator.forBlock['input_ldr_read_digital'] = ldrAnalogRead
 
 arduinoGenerator.forBlock['input_ldr_is_dark'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['false', 0];
-  return [`(analogRead(${pin}) < 2000)`, 0];
+  const threshold = block.getFieldValue('THRESHOLD') ?? 1000;
+  return [`(analogRead(${pin}) < ${threshold})`, 0];
+}
+
+function ensureDs18b20(pin: string): string {
+  const oneWireVar = `oneWire_${pin}`;
+  const sensorVar = `ds18b20_${pin}`;
+
+  arduinoGenerator.definitions_['include_onewire'] = '#include <OneWire.h>';
+  arduinoGenerator.definitions_['include_dallastemperature'] = '#include <DallasTemperature.h>';
+  arduinoGenerator.definitions_[`var_${oneWireVar}`] = `OneWire ${oneWireVar}(${pin});`;
+  arduinoGenerator.definitions_[`var_${sensorVar}`] = `DallasTemperature ${sensorVar}(&${oneWireVar});`;
+  arduinoGenerator.definitions_[`setup_${sensorVar}`] = `  ${sensorVar}.begin();`;
+
+  const funcName = `readDs18b20_${pin}`;
+  arduinoGenerator.functionNames_[funcName] = `
+float ${funcName}() {
+  ${sensorVar}.requestTemperatures();
+  return ${sensorVar}.getTempCByIndex(0);
+}
+`;
+  return `${funcName}()`;
 }
 
 arduinoGenerator.forBlock['input_temp_read'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['0.0', 0];
-  return [`(((analogRead(${pin}) * (3.3 / 4095.0)) - 0.5) * 100)`, 0];
+  return [ensureDs18b20(pin), 0];
 }
 
 arduinoGenerator.forBlock['input_temp_is_hot'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return ['false', 0];
-  return [`((((analogRead(${pin}) * (3.3 / 4095.0)) - 0.5) * 100) > 30.0)`, 0];
+  return [`(${ensureDs18b20(pin)} > 30.0)`, 0];
+}
+
+// ── AI Vision runtime ────────────────────────────────────────────────────
+// Globals updated once per loop() from lines the desktop AI Vision panel
+// streams over the SAME serial connection used for programming (see
+// src/renderer/src/lib/ai/aiSerialWriter.ts for the AI:CLASS:/AI:MIC: wire
+// format). Idempotent — safe to call from every ai_* block generator.
+function ensureAIRuntime(): void {
+  if (arduinoGenerator.definitions_['var_ai_predicted_class']) return;
+
+  arduinoGenerator.definitions_['var_ai_predicted_class'] = 'String aiPredictedClass = "";';
+  arduinoGenerator.definitions_['var_ai_confidence'] = 'int aiConfidence = 0;';
+  arduinoGenerator.definitions_['var_ai_mic_level'] = 'int aiMicLevel = 0;';
+  arduinoGenerator.definitions_['var_ai_gesture'] = 'String aiGesture = "None";';
+  arduinoGenerator.definitions_['var_ai_gesture_confidence'] = 'int aiGestureConfidence = 0;';
+  arduinoGenerator.definitions_['var_ai_object'] = 'String aiObject = "None";';
+  arduinoGenerator.definitions_['var_ai_object_confidence'] = 'int aiObjectConfidence = 0;';
+  arduinoGenerator.definitions_['var_ai_shape'] = 'String aiShape = "None";';
+  arduinoGenerator.definitions_['var_ai_shape_confidence'] = 'int aiShapeConfidence = 0;';
+  arduinoGenerator.definitions_['var_ai_expression'] = 'String aiExpression = "None";';
+  arduinoGenerator.definitions_['var_ai_expression_confidence'] = 'int aiExpressionConfidence = 0;';
+
+  arduinoGenerator.functionNames_['parseAISerial'] = `
+void parseAISerial() {
+  while (Serial.available()) {
+    String line = Serial.readStringUntil('\\n');
+    line.trim();
+    if (line.startsWith("AI:CLASS:")) {
+      String rest = line.substring(9);
+      int sep = rest.lastIndexOf(':');
+      if (sep > 0) {
+        aiPredictedClass = rest.substring(0, sep);
+        aiConfidence = rest.substring(sep + 1).toInt();
+      }
+    } else if (line.startsWith("AI:GESTURE:")) {
+      String rest = line.substring(11);
+      int sep = rest.lastIndexOf(':');
+      if (sep > 0) {
+        aiGesture = rest.substring(0, sep);
+        aiGestureConfidence = rest.substring(sep + 1).toInt();
+      }
+    } else if (line.startsWith("AI:OBJECT:")) {
+      String rest = line.substring(10);
+      int sep = rest.lastIndexOf(':');
+      if (sep > 0) {
+        aiObject = rest.substring(0, sep);
+        aiObjectConfidence = rest.substring(sep + 1).toInt();
+      }
+    } else if (line.startsWith("AI:SHAPE:")) {
+      String rest = line.substring(9);
+      int sep = rest.lastIndexOf(':');
+      if (sep > 0) {
+        aiShape = rest.substring(0, sep);
+        aiShapeConfidence = rest.substring(sep + 1).toInt();
+      }
+    } else if (line.startsWith("AI:EXPRESSION:")) {
+      String rest = line.substring(14);
+      int sep = rest.lastIndexOf(':');
+      if (sep > 0) {
+        aiExpression = rest.substring(0, sep);
+        aiExpressionConfidence = rest.substring(sep + 1).toInt();
+      }
+    } else if (line.startsWith("AI:MIC:")) {
+      aiMicLevel = line.substring(7).toInt();
+    }
+  }
+}
+`;
+
+  arduinoGenerator.definitions_['loop_ai_poll'] = '  parseAISerial();\n';
+}
+
+arduinoGenerator.forBlock['ai_predicted_class'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiPredictedClass', 0];
+}
+
+arduinoGenerator.forBlock['ai_prediction_confidence'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiConfidence', 0];
+}
+
+arduinoGenerator.forBlock['ai_is_class'] = function(block: Blockly.Block) {
+  ensureAIRuntime();
+  const className = block.getFieldValue('CLASS') || '';
+  const escaped = className.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return [`(aiPredictedClass == "${escaped}")`, 0];
+}
+
+arduinoGenerator.forBlock['ai_mic_level'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiMicLevel', 0];
+}
+
+arduinoGenerator.forBlock['ai_hand_gesture'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiGesture', 0];
+}
+
+arduinoGenerator.forBlock['ai_gesture_confidence'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiGestureConfidence', 0];
+}
+
+arduinoGenerator.forBlock['ai_is_gesture'] = function(block: Blockly.Block) {
+  ensureAIRuntime();
+  const gesture = block.getFieldValue('GESTURE') || 'None';
+  return [`(aiGesture == "${gesture}")`, 0];
+}
+
+arduinoGenerator.forBlock['ai_hand_detected'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['(aiGesture != "None")', 0];
+}
+
+arduinoGenerator.forBlock['ai_detected_object'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiObject', 0];
+}
+
+arduinoGenerator.forBlock['ai_object_confidence'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiObjectConfidence', 0];
+}
+
+arduinoGenerator.forBlock['ai_is_object'] = function(block: Blockly.Block) {
+  ensureAIRuntime();
+  const object = block.getFieldValue('OBJECT') || 'None';
+  return [`(aiObject == "${object}")`, 0];
+}
+
+arduinoGenerator.forBlock['ai_object_detected'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['(aiObject != "None")', 0];
+}
+
+arduinoGenerator.forBlock['ai_detected_shape'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiShape', 0];
+}
+
+arduinoGenerator.forBlock['ai_shape_confidence'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiShapeConfidence', 0];
+}
+
+arduinoGenerator.forBlock['ai_is_shape'] = function(block: Blockly.Block) {
+  ensureAIRuntime();
+  const shape = block.getFieldValue('SHAPE') || 'None';
+  return [`(aiShape == "${shape}")`, 0];
+}
+
+arduinoGenerator.forBlock['ai_shape_detected'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['(aiShape != "None")', 0];
+}
+
+arduinoGenerator.forBlock['ai_detected_expression'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiExpression', 0];
+}
+
+arduinoGenerator.forBlock['ai_expression_confidence'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['aiExpressionConfidence', 0];
+}
+
+arduinoGenerator.forBlock['ai_is_expression'] = function(block: Blockly.Block) {
+  ensureAIRuntime();
+  const expression = block.getFieldValue('EXPRESSION') || 'None';
+  return [`(aiExpression == "${expression}")`, 0];
+}
+
+arduinoGenerator.forBlock['ai_face_detected'] = function(_block: Blockly.Block) {
+  ensureAIRuntime();
+  return ['(aiExpression != "None")', 0];
 }
 
 arduinoGenerator.forBlock['input_pot_read'] = function(block: Blockly.Block) {
@@ -254,10 +485,23 @@ arduinoGenerator.forBlock['wifi_connect'] = function(block: Blockly.Block) {
   }
   const ssid = arduinoGenerator.valueToCode(block, 'SSID', 0) || '""'
   const password = arduinoGenerator.valueToCode(block, 'PASSWORD', 0) || '""'
-  
+
   arduinoGenerator.definitions_['include_wifi'] = '#include <WiFi.h>'
-  
-  return `WiFi.begin(${ssid}, ${password});\nwhile (WiFi.status() != WL_CONNECTED) {\n  delay(500);\n}\n`
+
+  // Wireless re-upload (OTA): any project that connects to WiFi automatically
+  // gets ArduinoOTA started too, so future uploads can go over the network
+  // instead of needing USB every time. The very first upload still has to be
+  // over USB — the board needs to already be running this OTA-enabled code
+  // before it can accept a wireless one — so the IP is printed to Serial
+  // (viewable over that same first USB connection) for the student to use.
+  arduinoGenerator.definitions_['include_ota'] = '#include <ArduinoOTA.h>'
+  arduinoGenerator.definitions_['loop_ota'] = '  ArduinoOTA.handle();\n'
+
+  return `WiFi.begin(${ssid}, ${password});\n` +
+    `while (WiFi.status() != WL_CONNECTED) {\n  delay(500);\n}\n` +
+    `Serial.print("WiFi connected. IP address for wireless upload: ");\n` +
+    `Serial.println(WiFi.localIP());\n` +
+    `ArduinoOTA.begin();\n`
 }
 
 // ── New Phase 4 Input Blocks ──────────────────────────────────────────────
@@ -308,6 +552,7 @@ float ${funcName}() {
   delayMicroseconds(10);
   digitalWrite(${trig}, LOW);
   long duration = pulseIn(${echo}, HIGH);
+  delay(50);
   return duration * 0.034 / 2;
 }
 `;
@@ -320,6 +565,7 @@ arduinoGenerator.forBlock['output_dcmotor_set'] = function(block: Blockly.Block)
   const devId = getPinFieldValue(block);
   // Default to STOP if not found
   const state = block.getFieldValue('STATE') || 'STOP';
+  const speed = arduinoGenerator.valueToCode(block, 'SPEED', 0) || '255';
   
   const in1 = getDevicePin(devId, 'in1');
   const in2 = getDevicePin(devId, 'in2');
@@ -327,19 +573,19 @@ arduinoGenerator.forBlock['output_dcmotor_set'] = function(block: Blockly.Block)
 
   let code = '';
   if (state === 'FWD') {
-    code += `digitalWrite(${in1}, HIGH);\n`;
-    code += `digitalWrite(${in2}, LOW);\n`;
+    code += `analogWrite(${in1}, ${speed});\n`;
+    code += `analogWrite(${in2}, 0);\n`;
   } else if (state === 'REV') {
-    code += `digitalWrite(${in1}, LOW);\n`;
-    code += `digitalWrite(${in2}, HIGH);\n`;
+    code += `analogWrite(${in1}, 0);\n`;
+    code += `analogWrite(${in2}, ${speed});\n`;
   } else if (state === 'HIGH') {
     // Legacy support for user's previous code
-    code += `digitalWrite(${in1}, LOW);\n`;
-    code += `digitalWrite(${in2}, HIGH);\n`;
+    code += `analogWrite(${in1}, 0);\n`;
+    code += `analogWrite(${in2}, ${speed});\n`;
   } else {
     // STOP or LOW
-    code += `digitalWrite(${in1}, LOW);\n`;
-    code += `digitalWrite(${in2}, LOW);\n`;
+    code += `analogWrite(${in1}, 0);\n`;
+    code += `analogWrite(${in2}, 0);\n`;
   }
   return code;
 }
@@ -392,7 +638,59 @@ arduinoGenerator.forBlock['oled_init'] = function(block: Blockly.Block) {
 
 arduinoGenerator.forBlock['oled_print'] = function(block: Blockly.Block) {
   const text = arduinoGenerator.valueToCode(block, 'TEXT', 0) || '""';
+  const style = block.getFieldValue('STYLE') || 'NORMAL';
+  if (style === 'BOLD') {
+    // Adafruit_GFX has no native bold weight for the built-in font, so this
+    // draws the same text twice, one pixel to the right, which reads as bold
+    // at small sizes. Scoped to this call only — reads the cursor position
+    // Adafruit_GFX is already tracking rather than any block-to-block state.
+    return `{\n` +
+      `  int16_t _bx = display.getCursorX(), _by = display.getCursorY();\n` +
+      `  display.print(${text});\n` +
+      `  display.setCursor(_bx + 1, _by);\n` +
+      `  display.println(${text});\n` +
+      `}\n` +
+      `display.display();\n`;
+  }
   return `display.println(${text});\ndisplay.display();\n`;
+};
+
+arduinoGenerator.forBlock['oled_text_size'] = function(block: Blockly.Block) {
+  const size = block.getFieldValue('SIZE') || '1';
+  return `display.setTextSize(${size});\n`;
+};
+
+// ── OLED icons ────────────────────────────────────────────────────────────
+// Small monochrome 8x8 bitmaps for Adafruit_GFX's drawBitmap(). The SSD1306 is
+// 1-bit-per-pixel, so these are pixel-art glyphs rather than full-color emoji —
+// each byte is one row, MSB (0x80) = leftmost pixel, matching drawBitmap's format.
+const OLED_ICON_BITMAPS: Record<string, string[]> = {
+  ARROW_UP:    ['0x18', '0x3C', '0x7E', '0x18', '0x18', '0x18', '0x18', '0x00'],
+  ARROW_DOWN:  ['0x00', '0x18', '0x18', '0x18', '0x18', '0x7E', '0x3C', '0x18'],
+  ARROW_LEFT:  ['0x0E', '0x1E', '0x3E', '0xFE', '0xFE', '0x3E', '0x1E', '0x0E'],
+  ARROW_RIGHT: ['0x70', '0x78', '0x7C', '0x7F', '0x7F', '0x7C', '0x78', '0x70'],
+  DOT:         ['0x3C', '0x7E', '0xFF', '0xFF', '0xFF', '0xFF', '0x7E', '0x3C'],
+  SQUARE:      ['0x00', '0x7E', '0x7E', '0x7E', '0x7E', '0x7E', '0x7E', '0x00'],
+  HEART:       ['0x6C', '0xFE', '0xFE', '0xFE', '0x7C', '0x38', '0x10', '0x00'],
+  STAR:        ['0x18', '0x18', '0xFF', '0x7E', '0x3C', '0x66', '0xC3', '0x81'],
+  CHECK:       ['0x00', '0x01', '0x02', '0x02', '0x44', '0x28', '0x10', '0x00'],
+  CROSS:       ['0x81', '0x42', '0x24', '0x18', '0x18', '0x24', '0x42', '0x81']
+};
+
+function ensureOledIcons(): void {
+  if (arduinoGenerator.definitions_['var_oled_icons']) return;
+  const entries = Object.entries(OLED_ICON_BITMAPS)
+    .map(([name, bytes]) => `const uint8_t ICON_${name}[] PROGMEM = { ${bytes.join(', ')} };`)
+    .join('\n');
+  arduinoGenerator.definitions_['var_oled_icons'] = entries;
+}
+
+arduinoGenerator.forBlock['oled_icon'] = function(block: Blockly.Block) {
+  ensureOledIcons();
+  const icon = block.getFieldValue('ICON') || 'DOT';
+  const x = arduinoGenerator.valueToCode(block, 'X', 0) || '0';
+  const y = arduinoGenerator.valueToCode(block, 'Y', 0) || '0';
+  return `display.drawBitmap(${x}, ${y}, ICON_${icon}, 8, 8, WHITE);\ndisplay.display();\n`;
 };
 
 arduinoGenerator.forBlock['oled_draw_text'] = function(block: Blockly.Block) {
@@ -412,35 +710,106 @@ arduinoGenerator.forBlock['oled_clear'] = function(block: Blockly.Block) {
   return `display.clearDisplay();\n`
 }
 
+// ESP32 WROOM's built-in Bluetooth radio (Classic BT), driven via the Arduino
+// core's own BluetoothSerial library — no external module or GPIO pins
+// involved, unlike the wired-serial approach this used to generate. The
+// #if/#error guard is the standard boilerplate from Espressif's own
+// BluetoothSerial examples: it fails the build early with a clear message
+// on core configurations where Bluetooth support was compiled out, instead
+// of a confusing "SerialBT was not declared" error.
+function ensureBluetoothIncludes(): void {
+  arduinoGenerator.definitions_['include_bluetooth'] =
+    '#include "BluetoothSerial.h"\n' +
+    '#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)\n' +
+    '#error Bluetooth is not enabled! Select a board/partition scheme with Bluetooth support.\n' +
+    '#endif';
+  arduinoGenerator.definitions_['var_bluetooth'] = 'BluetoothSerial SerialBT;';
+  ensureBluetoothOta();
+}
+
+// Wireless re-upload over Bluetooth. Any project that uses Bluetooth also gets this
+// firmware-update agent, exactly like the WiFi Connect block enables ArduinoOTA.
+//
+// The ESP32's ROM bootloader only speaks UART, and a Bluetooth serial port carries
+// no DTR/RTS lines to pull EN/BOOT — so a .bin can never be flashed over Bluetooth
+// the way esptool does it over USB. The running sketch has to receive the image
+// itself and write it to the spare OTA partition. Consequence: the first upload of
+// a project still has to go over USB; after that the board accepts Bluetooth
+// uploads for as long as its sketch keeps using Bluetooth blocks.
+//
+// The agent only reacts to a frame starting with ESC (0x1B), so it can never
+// swallow ordinary text the student sends to the Bluetooth Read blocks.
+function ensureBluetoothOta(): void {
+  arduinoGenerator.definitions_['include_bt_update'] = '#include <Update.h>';
+  arduinoGenerator.definitions_['var_bt_ota'] = `
+// ── StreamLab wireless upload agent ──────────────────────────────────────────
+// Frame from the StreamLab app: 0x1B "SLOTA" <byte count> '\\n', then the raw .bin.
+void slBtOtaPoll() {
+  if (SerialBT.peek() != 0x1B) return;
+
+  String header = SerialBT.readStringUntil('\\n');
+  if (!header.startsWith("\\x1BSLOTA")) return;
+
+  size_t total = (size_t) header.substring(6).toInt();
+  if (total == 0 || !Update.begin(total)) {
+    SerialBT.println("SLOTA_FAIL begin");
+    return;
+  }
+  SerialBT.println("SLOTA_READY");
+
+  uint8_t buf[512];
+  size_t received = 0;
+  unsigned long lastByte = millis();
+  while (received < total) {
+    int avail = SerialBT.available();
+    if (avail > 0) {
+      int want = avail > (int) sizeof(buf) ? (int) sizeof(buf) : avail;
+      int n = SerialBT.readBytes(buf, want);
+      if (n > 0) {
+        Update.write(buf, n);
+        received += n;
+        lastByte = millis();
+      }
+    } else if (millis() - lastByte > 20000) {
+      Update.abort();
+      SerialBT.println("SLOTA_FAIL timeout");
+      return;
+    }
+  }
+
+  if (Update.end(true)) {
+    SerialBT.println("SLOTA_OK");
+    delay(400);
+    ESP.restart();
+  } else {
+    SerialBT.println("SLOTA_FAIL write");
+  }
+}
+`;
+  arduinoGenerator.definitions_['loop_bt_ota'] = '  slBtOtaPoll();\n';
+}
+
 arduinoGenerator.forBlock['bluetooth_begin'] = function(block: Blockly.Block) {
-  const devId = getPinFieldValue(block);
-  const tx = getDevicePin(devId, 'tx');
-  const rx = getDevicePin(devId, 'rx');
-  if (!isValidPin(tx) || !isValidPin(rx)) return '';
-  
-  arduinoGenerator.definitions_['include_hardwareserial'] = '#include <HardwareSerial.h>';
-  arduinoGenerator.definitions_[`var_bt_${devId}`] = `HardwareSerial bt_${devId}(1);`; // UART1
-  arduinoGenerator.definitions_[`setup_bt_${devId}`] = `  bt_${devId}.begin(9600, SERIAL_8N1, ${rx}, ${tx});`;
+  ensureBluetoothIncludes();
+  const name = block.getFieldValue('NAME') || 'MY_STEAM_LAB';
+  arduinoGenerator.definitions_['setup_bluetooth'] = `  SerialBT.begin("${name}");`;
   return '';
 };
 
 arduinoGenerator.forBlock['bluetooth_send'] = function(block: Blockly.Block) {
-  const devId = getPinFieldValue(block);
-  if (!isValidPin(getDevicePin(devId, 'tx'))) return '';
+  ensureBluetoothIncludes();
   const text = arduinoGenerator.valueToCode(block, 'TEXT', 0) || '""';
-  return `bt_${devId}.println(${text});\n`;
+  return `SerialBT.println(${text});\n`;
 };
 
 arduinoGenerator.forBlock['bluetooth_read'] = function(block: Blockly.Block) {
-  const devId = getPinFieldValue(block);
-  if (!isValidPin(getDevicePin(devId, 'rx'))) return ['""', 0];
-  return [`bt_${devId}.readString()`, 0];
+  ensureBluetoothIncludes();
+  return ['SerialBT.readString()', 0];
 };
 
 arduinoGenerator.forBlock['bluetooth_available'] = function(block: Blockly.Block) {
-  const devId = getPinFieldValue(block);
-  if (!isValidPin(getDevicePin(devId, 'rx'))) return ['false', 0];
-  return [`(bt_${devId}.available() > 0)`, 0];
+  ensureBluetoothIncludes();
+  return ['(SerialBT.available() > 0)', 0];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -611,9 +980,11 @@ export function generateFullArduinoCode(
   // 2. Variables & Objects
   const globalVars: string[] = []
   const injectedSetups: string[] = []
+  const loopInjections: string[] = []
   for (const key in arduinoGenerator.definitions_) {
     if (key.startsWith('var_')) globalVars.push(arduinoGenerator.definitions_[key])
     if (key.startsWith('setup_')) injectedSetups.push(arduinoGenerator.definitions_[key])
+    if (key.startsWith('loop_')) loopInjections.push(arduinoGenerator.definitions_[key])
   }
 
   // 3. Hardware pinMode injection
@@ -640,7 +1011,10 @@ export function generateFullArduinoCode(
             }
           }
         } else if (reqs.requiredInterfaces.includes('DIGITAL_IN') || reqs.requiredInterfaces.includes('ANALOG_IN')) {
-          if (device.type === 'button') {
+          if (device.type === 'button' || device.type === 'temp') {
+            // temp (DS18B20) needs a pull-up on the OneWire data line; the external
+            // 4.7k resistor is preferred, but the internal pull-up avoids floating-line
+            // noise (garbage/random readings) when no resistor is wired.
             pinModes.push(`  pinMode(${pin}, INPUT_PULLUP); // ${device.type}`)
           } else {
             pinModes.push(`  pinMode(${pin}, INPUT); // ${device.type}`)
@@ -691,18 +1065,23 @@ export function generateFullArduinoCode(
             injectedSetups.push(`  tcs.begin();`)
           }
         }
-      } else if (device.type === 'bluetooth') {
-        const pins = device.mappedPin as Record<string, string>
-        if (isValidPin(pins.rx) && isValidPin(pins.tx)) {
-          includes.add('#include <HardwareSerial.h>')
-          const varBt = `HardwareSerial bt_${device.id}(1);`
-          if (!globalVars.includes(varBt)) {
-            globalVars.push(varBt)
-            injectedSetups.push(`  bt_${device.id}.begin(9600, SERIAL_8N1, ${normalizePin(pins.rx)}, ${normalizePin(pins.tx)});`)
-          }
-        }
       }
     }
+  }
+
+  // Pin the ESP32 ADC to 12-bit whenever an analog sensor is on the board. 12-bit is
+  // the core default, but stating it makes the 0-4095 range the blocks/thresholds
+  // assume explicit, and immune to anything else changing the resolution.
+  if (boardId === 'esp32') {
+    const hasAnalogIn = devices.some(d => {
+      const reqs = COMPONENT_REQUIREMENTS[d.type]
+      if (!reqs) return false
+      if (Array.isArray(reqs.requiredInterfaces)) {
+        return reqs.requiredInterfaces.includes('ANALOG_IN')
+      }
+      return Object.values(reqs.requiredInterfaces).some(intfs => intfs.includes('ANALOG_IN'))
+    })
+    if (hasAnalogIn) injectedSetups.push(`  analogReadResolution(12); // 0-4095 ADC range`)
   }
 
   // Inject analogWrite polyfill for ESP32 older cores if PWM is used
@@ -760,6 +1139,12 @@ void analogWrite(uint8_t pin, uint32_t value) {
   // Handle default Loop if none exists
   if (!loopCode) {
     loopCode = `void loop() {\n  // Put your main code here, to run repeatedly:\n}\n`
+  }
+
+  // Splice loop-level injections (e.g. AI serial polling) so they run first,
+  // every iteration, regardless of what user blocks are in the loop.
+  if (loopInjections.length > 0) {
+    loopCode = loopCode.replace('void loop() {', `void loop() {\n${loopInjections.join('')}`)
   }
 
   // 5. Final Assembly
@@ -826,18 +1211,23 @@ arduinoGenerator.forBlock['input_joystick_read'] = function(block: Blockly.Block
   return [`analogRead(${pin})`, 0];
 };
 
-// 5. Communication (WiFi)
+// 5. Communication (WiFi) — every block here ensures WiFi.h itself is
+// included, not just the ones that also need HTTPClient.h, so e.g. WiFi
+// Status still compiles even when used without a WiFi Connect block.
 arduinoGenerator.forBlock['wifi_status'] = function(block: Blockly.Block) {
+  arduinoGenerator.definitions_['include_wifi'] = '#include <WiFi.h>';
   return ['(WiFi.status() == WL_CONNECTED)', 0];
 };
 
 arduinoGenerator.forBlock['wifi_get_ip'] = function(block: Blockly.Block) {
+  arduinoGenerator.definitions_['include_wifi'] = '#include <WiFi.h>';
   return ['WiFi.localIP().toString()', 0];
 };
 
 arduinoGenerator.forBlock['wifi_http_request'] = function(block: Blockly.Block) {
   const url = arduinoGenerator.valueToCode(block, 'URL', 0) || '""';
   const method = block.getFieldValue('METHOD');
+  arduinoGenerator.definitions_['include_wifi'] = '#include <WiFi.h>';
   arduinoGenerator.definitions_['include_http'] = '#include <HTTPClient.h>';
   
   const funcName = `http_${method.toLowerCase()}_request`;

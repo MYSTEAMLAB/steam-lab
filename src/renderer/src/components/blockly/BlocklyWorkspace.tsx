@@ -22,6 +22,7 @@ export const BlocklyWorkspace: React.FC = () => {
   const setBlocklyWorkspaceJson = useAppStore(s => s.setBlocklyWorkspaceJson)
   const setPromptConfig = useAppStore(s => s.setPromptConfig)
   const projectLoadTimestamp = useAppStore(s => s.projectLoadTimestamp)
+  const activeTab = useAppStore(s => s.activeTab)
 
   const placedDevices = selectedBoard ? (boardLayouts[selectedBoard.id]?.devices || []) : []
 
@@ -204,6 +205,23 @@ export const BlocklyWorkspace: React.FC = () => {
       }
     }
   }, [projectLoadTimestamp])
+
+  // ── Fix stray scrollbar on tab switch ─────────────────────────────────────
+  // AppLayout keeps this component mounted and just toggles it between
+  // display:none/block when switching tabs (so Blockly/camera state survives
+  // switching away). Blockly computes its custom SVG scrollbar position from
+  // the workspace's layout metrics — while this tab is hidden those metrics
+  // are stale/zero, so the scrollbar can render in the wrong place the first
+  // frame it's shown again. Also defensively close any flyout that was left
+  // open from before the tab was hidden.
+  useEffect(() => {
+    if (activeTab !== 'blocks' || !workspaceRef.current) return
+    const workspace = workspaceRef.current
+    workspace.getFlyout()?.hide()
+    window.requestAnimationFrame(() => {
+      Blockly.svgResize(workspace)
+    })
+  }, [activeTab])
 
   return (
     <div

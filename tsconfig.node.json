@@ -10,7 +10,6 @@
     "resolveJsonModule": true,
     "noEmit": false,
     "outDir": "out",
-    "baseUrl": ".",
     "paths": {
       "@main/*": ["./src/main/*"],
       "@shared/*": ["./src/shared/*"]

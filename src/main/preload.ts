@@ -27,7 +27,13 @@ const api = {
     check: () => ipcRenderer.invoke('compiler:check'),
     install: () => ipcRenderer.invoke('compiler:install'),
     compile: (code: string, fqbn: string) => ipcRenderer.invoke('compiler:compile', code, fqbn),
-    upload: (code: string, fqbn: string, port: string) => ipcRenderer.invoke('compiler:upload', code, fqbn, port),
+    upload: (
+      code: string,
+      fqbn: string,
+      port: string,
+      wifiTarget?: { ip: string; password?: string },
+      btTarget?: { port: string }
+    ) => ipcRenderer.invoke('compiler:upload', code, fqbn, port, wifiTarget, btTarget),
     onLog: (callback: (log: string) => void) => {
       const listener = (_event: any, log: string) => callback(log)
       ipcRenderer.on('compiler:log', listener)
@@ -35,9 +41,15 @@ const api = {
     }
   },
 
+  bluetooth: {
+    /** Paired Bluetooth serial devices, resolved to their real names. */
+    listDevices: () => ipcRenderer.invoke('bluetooth:listDevices')
+  },
+
   serial: {
     getPorts: () => ipcRenderer.invoke('serial:getPorts'),
-    open: (path: string, baudRate: number) => ipcRenderer.invoke('serial:open', path, baudRate),
+    open: (path: string, baudRate: number, options?: { skipReset?: boolean }) =>
+      ipcRenderer.invoke('serial:open', path, baudRate, options),
     close: () => ipcRenderer.invoke('serial:close'),
     write: (data: string) => ipcRenderer.invoke('serial:write', data),
     onData: (callback: (data: string) => void) => {

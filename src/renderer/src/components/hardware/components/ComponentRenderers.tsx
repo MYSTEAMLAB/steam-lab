@@ -135,6 +135,165 @@ export const LDRComponent: React.FC<ComponentProps> = ({ device, onPinClick, act
 }
 
 
+export const PotentiometerComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-16" y="-8" width="32" height="20" rx="3" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <circle cx="0" cy="-16" r="12" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+      <rect x="-1.5" y="-25" width="3" height="10" rx="1" fill="#64748b" />
+      <rect x="-10" y="12" width="4" height="14" fill="#94a3b8" />
+      <rect x="-2" y="12" width="4" height="14" fill="#94a3b8" />
+      <rect x="6" y="12" width="4" height="14" fill="#94a3b8" />
+
+      <Hitbox x={-8} y={26} name="GND" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, -8, 26)} />
+      <Hitbox x={0} y={26} name="Signal" isActive={activeWireSource === `${device.id}:2`} onClick={(n) => onPinClick(`${device.id}:2`, 0, 26)} />
+      <Hitbox x={8} y={26} name="VCC" isActive={activeWireSource === `${device.id}:3`} onClick={(n) => onPinClick(`${device.id}:3`, 8, 26)} />
+    </g>
+  )
+}
+
+export const TempSensorComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      {/* DS18B20 TO-92 package */}
+      <path d="M -9,-14 A 9,9 0 0,1 9,-14 L 9,12 L -9,12 Z" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+      <circle cx="0" cy="-8" r="2" fill="#475569" />
+      <rect x="-8" y="12" width="3" height="16" fill="#94a3b8" />
+      <rect x="-1.5" y="12" width="3" height="16" fill="#94a3b8" />
+      <rect x="5" y="12" width="3" height="16" fill="#94a3b8" />
+
+      <Hitbox x={-6.5} y={28} name="GND" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, -6.5, 28)} />
+      <Hitbox x={0} y={28} name="Data" isActive={activeWireSource === `${device.id}:2`} onClick={(n) => onPinClick(`${device.id}:2`, 0, 28)} />
+      <Hitbox x={6.5} y={28} name="VCC" isActive={activeWireSource === `${device.id}:3`} onClick={(n) => onPinClick(`${device.id}:3`, 6.5, 28)} />
+    </g>
+  )
+}
+
+export const DHT11Component: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-17" y="-22" width="34" height="30" rx="3" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" />
+      {[-10, -3, 4, 11].map(gx => (
+        <line key={gx} x1={gx} y1={-18} x2={gx} y2={2} stroke="#0284c7" strokeWidth="1.5" opacity={0.6} />
+      ))}
+      <rect x="-8" y="8" width="4" height="14" fill="#94a3b8" />
+      <rect x="-2" y="8" width="4" height="14" fill="#94a3b8" />
+      <rect x="4" y="8" width="4" height="14" fill="#94a3b8" />
+
+      <Hitbox x={-6} y={22} name="VCC" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, -6, 22)} />
+      <Hitbox x={0} y={22} name="Data" isActive={activeWireSource === `${device.id}:2`} onClick={(n) => onPinClick(`${device.id}:2`, 0, 22)} />
+      <Hitbox x={6} y={22} name="GND" isActive={activeWireSource === `${device.id}:3`} onClick={(n) => onPinClick(`${device.id}:3`, 6, 22)} />
+    </g>
+  )
+}
+
+export const IRSensorComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-18" y="-14" width="36" height="20" rx="3" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+      <circle cx="-9" cy="-4" r="4" fill="#111827" stroke="#475569" />
+      <circle cx="9" cy="-4" r="4" fill="#7f1d1d" stroke="#475569" />
+      <rect x="-8" y="6" width="4" height="14" fill="#94a3b8" />
+      <rect x="-2" y="6" width="4" height="14" fill="#94a3b8" />
+      <rect x="4" y="6" width="4" height="14" fill="#94a3b8" />
+
+      <Hitbox x={-6} y={20} name="GND" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, -6, 20)} />
+      <Hitbox x={0} y={20} name="OUT" isActive={activeWireSource === `${device.id}:2`} onClick={(n) => onPinClick(`${device.id}:2`, 0, 20)} />
+      <Hitbox x={6} y={20} name="VCC" isActive={activeWireSource === `${device.id}:3`} onClick={(n) => onPinClick(`${device.id}:3`, 6, 20)} />
+    </g>
+  )
+}
+
+export const TouchSensorComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-14" y="-14" width="28" height="24" rx="3" fill="#0f766e" stroke="#134e4a" strokeWidth="2" />
+      <circle cx="0" cy="-4" r="7" fill="none" stroke="#5eead4" strokeWidth="2" />
+      <circle cx="0" cy="-4" r="2.5" fill="#5eead4" />
+      <rect x="-6" y="10" width="4" height="14" fill="#94a3b8" />
+      <rect x="2" y="10" width="4" height="14" fill="#94a3b8" />
+
+      <Hitbox x={-4} y={24} name="Signal" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, -4, 24)} />
+      <Hitbox x={4} y={24} name="GND" isActive={activeWireSource === `${device.id}:2`} onClick={(n) => onPinClick(`${device.id}:2`, 4, 24)} />
+    </g>
+  )
+}
+
+export const UltrasonicComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-28" y="-16" width="56" height="26" rx="3" fill="#0e7490" stroke="#155e75" strokeWidth="2" />
+      <circle cx="-13" cy="-3" r="9" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
+      <circle cx="-13" cy="-3" r="4" fill="#cbd5e1" />
+      <circle cx="13" cy="-3" r="9" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
+      <circle cx="13" cy="-3" r="4" fill="#cbd5e1" />
+      {[-18, -6, 6, 18].map(gx => (
+        <rect key={gx} x={gx - 2} y={10} width="4" height="14" fill="#94a3b8" />
+      ))}
+
+      <Hitbox x={-18} y={24} name="VCC" isActive={activeWireSource === `${device.id}:vcc`} onClick={(n) => onPinClick(`${device.id}:vcc`, -18, 24)} />
+      <Hitbox x={-6} y={24} name="Trig" isActive={activeWireSource === `${device.id}:trig`} onClick={(n) => onPinClick(`${device.id}:trig`, -6, 24)} />
+      <Hitbox x={6} y={24} name="Echo" isActive={activeWireSource === `${device.id}:echo`} onClick={(n) => onPinClick(`${device.id}:echo`, 6, 24)} />
+      <Hitbox x={18} y={24} name="GND" isActive={activeWireSource === `${device.id}:gnd`} onClick={(n) => onPinClick(`${device.id}:gnd`, 18, 24)} />
+    </g>
+  )
+}
+
+export const DCMotorComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <circle cx="0" cy="-2" r="20" fill="#7c3aed" stroke="#5b21b6" strokeWidth="2" />
+      <circle cx="0" cy="-2" r="8" fill="#4c1d95" />
+      <rect x="16" y="-6" width="10" height="8" rx="1" fill="#5b21b6" />
+      <path d="M -6,16 Q -6,26 -14,26 L -22,26" fill="none" stroke="#ef4444" strokeWidth="3" />
+      <path d="M 6,16 Q 6,30 -14,30 L -22,30" fill="none" stroke="#1e293b" strokeWidth="3" />
+
+      <Hitbox x={-22} y={26} name="in1" isActive={activeWireSource === `${device.id}:in1`} onClick={(n) => onPinClick(`${device.id}:in1`, -22, 26)} />
+      <Hitbox x={-22} y={30} name="in2" isActive={activeWireSource === `${device.id}:in2`} onClick={(n) => onPinClick(`${device.id}:in2`, -22, 30)} />
+    </g>
+  )
+}
+
+export const MotorDriverComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  const pins: [string, string][] = [
+    ['enA', '-30'], ['in1', '-18'], ['in2', '-6'], ['in3', '6'], ['in4', '18'], ['enB', '30']
+  ]
+  return (
+    <g>
+      <rect x="-36" y="-16" width="72" height="28" rx="3" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <rect x="-16" y="-12" width="32" height="18" rx="2" fill="#0f172a" />
+      <rect x="-30" y="-12" width="10" height="6" fill="#71717a" />
+      <rect x="20" y="-12" width="10" height="6" fill="#71717a" />
+
+      {pins.map(([name, x]) => (
+        <Hitbox
+          key={name}
+          x={Number(x)} y={22}
+          name={name}
+          isActive={activeWireSource === `${device.id}:${name}`}
+          onClick={(n) => onPinClick(`${device.id}:${name}`, Number(x), 22)}
+        />
+      ))}
+    </g>
+  )
+}
+
+export const OledComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <rect x="-32" y="-18" width="64" height="32" rx="2" fill="#0f172a" stroke="#334155" strokeWidth="2" />
+      <rect x="-27" y="-13" width="54" height="22" rx="1" fill="#0891b2" opacity={0.85} />
+      <rect x="-23" y="-8" width="30" height="2" fill="#a5f3fc" opacity={0.7} />
+      <rect x="-23" y="-3" width="20" height="2" fill="#a5f3fc" opacity={0.5} />
+      <rect x="-6" y="14" width="4" height="12" fill="#94a3b8" />
+      <rect x="2" y="14" width="4" height="12" fill="#94a3b8" />
+
+      <Hitbox x={-4} y={26} name="SDA" isActive={activeWireSource === `${device.id}:sda`} onClick={(n) => onPinClick(`${device.id}:sda`, -4, 26)} />
+      <Hitbox x={4} y={26} name="SCL" isActive={activeWireSource === `${device.id}:scl`} onClick={(n) => onPinClick(`${device.id}:scl`, 4, 26)} />
+    </g>
+  )
+}
+
 export const JoystickComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
   return (
     <g>

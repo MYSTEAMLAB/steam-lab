@@ -227,14 +227,28 @@
     }
   },
   "peripherals": {
-    "ir_sensor": {
+    "ir": {
       "type": "input",
       "preferredPin": "GPIO35",
       "compat": [
         "DIGITAL_IN"
       ]
     },
+    "ir_2": {
+      "type": "input",
+      "preferredPin": "GPIO34",
+      "compat": [
+        "DIGITAL_IN"
+      ]
+    },
     "ldr": {
+      "type": "input",
+      "preferredPin": "GPIO35",
+      "compat": [
+        "ANALOG_IN"
+      ]
+    },
+    "ldr_2": {
       "type": "input",
       "preferredPin": "GPIO34",
       "compat": [
@@ -245,7 +259,7 @@
       "type": "input",
       "preferredPin": "GPIO32",
       "compat": [
-        "ANALOG_IN"
+        "DIGITAL_IN"
       ]
     },
     "joystick": {
@@ -307,9 +321,29 @@
       "preferredPin": "GPIO16",
       "compat": ["DIGITAL_OUT"]
     },
+    "buzzer": {
+      "type": "output",
+      "preferredPin": "GPIO18",
+      "compat": ["DIGITAL_OUT"]
+    },
+    "buzzer_2": {
+      "type": "output",
+      "preferredPin": "GPIO17",
+      "compat": ["DIGITAL_OUT"]
+    },
+    "buzzer_3": {
+      "type": "output",
+      "preferredPin": "GPIO22",
+      "compat": ["DIGITAL_OUT"]
+    },
+    "buzzer_4": {
+      "type": "output",
+      "preferredPin": "GPIO16",
+      "compat": ["DIGITAL_OUT"]
+    },
     "servo": {
       "type": "output",
-      "preferredPin": "GPIO27",
+      "preferredPin": "GPIO23",
       "compat": [
         "PWM"
       ]
@@ -317,8 +351,8 @@
     "dcmotor": {
       "type": "motor",
       "preferredPin": {
-        "in1": "GPIO19",
-        "in2": "GPIO18"
+        "in1": "GPIO18",
+        "in2": "GPIO19"
       },
       "compat": [
         "DIGITAL_OUT"
@@ -327,8 +361,8 @@
     "dcmotor_2": {
       "type": "motor",
       "preferredPin": {
-        "in1": "GPIO5",
-        "in2": "GPIO17"
+        "in1": "GPIO17",
+        "in2": "GPIO5"
       },
       "compat": [
         "DIGITAL_OUT"
@@ -347,8 +381,8 @@
     "dcmotor_4": {
       "type": "motor",
       "preferredPin": {
-        "in1": "GPIO21",
-        "in2": "GPIO16"
+        "in1": "GPIO16",
+        "in2": "GPIO21"
       },
       "compat": [
         "DIGITAL_OUT"

@@ -2,6 +2,10 @@ import * as Blockly from 'blockly/core'
 import { useAppStore } from '../../../store/useAppStore'
 import { boardRegistry } from '@shared/boards'
 import { COMPONENT_REQUIREMENTS } from '@shared/boards/wiringEngine'
+import { getTrainedClassNames } from '@renderer/lib/ai/imageClassifier'
+import { COCO_LABELS } from '@renderer/lib/ai/objectDetector'
+import { SHAPE_LABELS } from '@renderer/lib/ai/shapeDetector'
+import { EXPRESSION_LABELS } from '@renderer/lib/ai/expressionDetector'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic Pin Dropdown Helpers
@@ -192,19 +196,26 @@ export function registerCustomBlocks(): void {
     }
   }
 
-  // LDR Read
-  Blockly.Blocks['input_ldr_read'] = {
+  // LDR Light Level (analog)
+  // The LDR sits in a voltage divider on an ADC pin (ESP32 GPIO34 / Uno A0), so its
+  // output is a continuous voltage. digitalRead() on that divider almost never crosses
+  // the logic-HIGH threshold, which is why it used to read 0 all the time — always
+  // read it with analogRead(). 'input_ldr_read_digital' stays registered (as the same
+  // analog block) so older saved projects still load.
+  const ldrReadBlock = {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
         .appendField('LDR')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('ldr')), 'PIN')
-        .appendField('Value')
+        .appendField('Light Value')
       this.setOutput(true, 'Number')
       this.setStyle('input_blocks')
-      this.setTooltip('Reads the raw analog light value.')
+      this.setTooltip('Reads the raw light level from the LDR (0-4095 on ESP32, 0-1023 on Uno). Brighter light = higher value.')
       this.setHelpUrl('')
     }
   }
+  Blockly.Blocks['input_ldr_read_analog'] = ldrReadBlock
+  Blockly.Blocks['input_ldr_read_digital'] = ldrReadBlock
 
   // LDR is Dark
   Blockly.Blocks['input_ldr_is_dark'] = {
@@ -212,10 +223,12 @@ export function registerCustomBlocks(): void {
       this.appendDummyInput()
         .appendField('LDR')
         .appendField(new Blockly.FieldDropdown(() => getComponentPins('ldr')), 'PIN')
-        .appendField('is Dark?')
+        .appendField('is Dark? (below')
+        .appendField(new Blockly.FieldNumber(1000, 0), 'THRESHOLD')
+        .appendField(')')
       this.setOutput(true, 'Boolean')
       this.setStyle('input_blocks')
-      this.setTooltip('Returns true if it is dark (LDR analog value < 2000).')
+      this.setTooltip('Returns true when the LDR light value drops below the threshold. Tune the threshold using the "LDR Light Value" block on the Serial Monitor.')
       this.setHelpUrl('')
     }
   }
@@ -229,7 +242,7 @@ export function registerCustomBlocks(): void {
         .appendField('°C')
       this.setOutput(true, 'Number')
       this.setStyle('input_blocks')
-      this.setTooltip('Reads the TMP36 sensor and converts to Celsius.')
+      this.setTooltip('Reads the DS18B20 sensor temperature in Celsius.')
       this.setHelpUrl('')
     }
   }
@@ -534,6 +547,9 @@ export function registerCustomBlocks(): void {
             ['Backward', 'REV'],
             ['Stop', 'STOP']
           ]), 'STATE')
+      this.appendValueInput('SPEED')
+        .setCheck('Number')
+        .appendField('Speed (0-255)')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('output_blocks')
@@ -627,12 +643,63 @@ export function registerCustomBlocks(): void {
       this.appendValueInput('TEXT')
         .setCheck(null)
         .appendField('Print')
+      this.appendDummyInput()
+        .appendField('Style')
+        .appendField(new Blockly.FieldDropdown([['Normal', 'NORMAL'], ['Bold', 'BOLD']]), 'STYLE')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('system_blocks')
+      this.setTooltip('Prints text to the OLED. Bold prints the text twice, one pixel over, for a heavier look.')
     }
   }
-  
+
+  // Persists for the rest of the sketch (like the real display.setTextSize call it
+  // wraps) — set it once in Setup, or change it mid-Loop to switch sizes on the fly.
+  Blockly.Blocks['oled_text_size'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('OLED Display')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('oled')), 'PIN')
+        .appendField('Text Size')
+        .appendField(new Blockly.FieldDropdown([['1 (Small)', '1'], ['2 (Medium)', '2'], ['3 (Large)', '3'], ['4 (X-Large)', '4']]), 'SIZE')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Sets how large the OLED text is drawn from this point on.')
+      this.setHelpUrl('')
+    }
+  }
+
+  const OLED_ICON_OPTIONS: [string, string][] = [
+    ['↑ Up Arrow', 'ARROW_UP'],
+    ['↓ Down Arrow', 'ARROW_DOWN'],
+    ['← Left Arrow', 'ARROW_LEFT'],
+    ['→ Right Arrow', 'ARROW_RIGHT'],
+    ['● Dot', 'DOT'],
+    ['■ Square', 'SQUARE'],
+    ['♥ Heart', 'HEART'],
+    ['★ Star', 'STAR'],
+    ['✓ Check', 'CHECK'],
+    ['✗ Cross', 'CROSS']
+  ]
+
+  Blockly.Blocks['oled_icon'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('OLED Display')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('oled')), 'PIN')
+        .appendField('Icon')
+        .appendField(new Blockly.FieldDropdown(OLED_ICON_OPTIONS), 'ICON')
+      this.appendValueInput('X').setCheck('Number').appendField('at X')
+      this.appendValueInput('Y').setCheck('Number').appendField('Y')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Draws a small 8x8 pixel icon on the OLED — arrows and a few simple shapes/symbols. The screen is monochrome, so these are pixel-art icons, not full-color emoji.')
+      this.setHelpUrl('')
+    }
+  }
+
   Blockly.Blocks['oled_clear'] = {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
@@ -645,14 +712,20 @@ export function registerCustomBlocks(): void {
     }
   }
 
+  // ESP32 WROOM has a built-in Bluetooth radio (Classic BT), so these blocks
+  // drive it directly via the Arduino core's BluetoothSerial library — no
+  // external module (e.g. HC-05) or GPIO wiring required, unlike every other
+  // block above that reads from a placed hardware component's mapped pin.
   Blockly.Blocks['bluetooth_begin'] = {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
         .appendField('Bluetooth Initialize')
-        .appendField(new Blockly.FieldDropdown(() => getComponentPins('bluetooth')), 'PIN')
+        .appendField('Name')
+        .appendField(new Blockly.FieldTextInput('MY_STEAM_LAB'), 'NAME')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('wifi_blocks')
+      this.setTooltip("Starts the ESP32's built-in Bluetooth radio so phones/PCs can discover and pair with it under this name.")
     }
   }
 
@@ -660,34 +733,34 @@ export function registerCustomBlocks(): void {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
         .appendField('Bluetooth Available')
-        .appendField(new Blockly.FieldDropdown(() => getComponentPins('bluetooth')), 'PIN')
       this.setOutput(true, 'Boolean')
       this.setStyle('wifi_blocks')
+      this.setTooltip('True if the connected Bluetooth device has sent data waiting to be read.')
     }
   }
 
   Blockly.Blocks['bluetooth_send'] = {
     init: function (this: Blockly.Block) {
-      this.appendDummyInput()
-        .appendField('Bluetooth')
-        .appendField(new Blockly.FieldDropdown(() => getComponentPins('bluetooth')), 'PIN')
       this.appendValueInput('TEXT')
-        .setCheck('String')
-        .appendField('Send')
+        // Unchecked like serial_print: SerialBT.println() takes numbers as happily
+        // as text, and restricting this to String blocked the common case of
+        // streaming a sensor reading to a phone.
+        .setCheck(null)
+        .appendField('Bluetooth Send')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('wifi_blocks')
+      this.setTooltip('Sends text or a number over Bluetooth to the connected device.')
     }
   }
-  
+
   Blockly.Blocks['bluetooth_read'] = {
     init: function (this: Blockly.Block) {
       this.appendDummyInput()
-        .appendField('Bluetooth')
-        .appendField(new Blockly.FieldDropdown(() => getComponentPins('bluetooth')), 'PIN')
-        .appendField('Read String')
+        .appendField('Bluetooth Read String')
       this.setOutput(true, 'String')
       this.setStyle('wifi_blocks')
+      this.setTooltip('Reads a line of text sent from the connected Bluetooth device.')
     }
   }
 }
@@ -975,3 +1048,245 @@ Blockly.Blocks['declare_variable'] = {
     this.setColour('#A55B80');
   }
 };
+
+// ── AI Vision Blocks ────────────────────────────────────────────────────────
+// Read the latest trained-classifier prediction / mic level streamed over
+// serial from the AI Vision panel (see src/renderer/src/lib/ai/aiSerialWriter.ts).
+
+Blockly.Blocks['ai_predicted_class'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Predicted Class')
+    this.setOutput(true, 'String')
+    this.setStyle('ai_blocks')
+    this.setTooltip('The most recent class name predicted by the AI Vision panel.')
+  }
+}
+
+Blockly.Blocks['ai_prediction_confidence'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Confidence (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Confidence (0-100) of the most recent AI prediction.')
+  }
+}
+
+Blockly.Blocks['ai_is_class'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Predicted Class =')
+      .appendField(new Blockly.FieldDropdown(() => getTrainedClassNames()), 'CLASS')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if the most recent AI prediction matches the selected class.')
+  }
+}
+
+Blockly.Blocks['ai_mic_level'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Mic Level (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Live microphone loudness (0-100) from the AI Vision panel.')
+  }
+}
+
+// ── Hand Gesture Blocks ─────────────────────────────────────────────────────
+// Built-in hand-landmark gesture recognition (MediaPipe Gesture Recognizer) —
+// no training needed, unlike the trainable classifier blocks above.
+
+const AI_GESTURE_OPTIONS: [string, string][] = [
+  ['Closed Fist', 'Closed_Fist'],
+  ['Open Palm', 'Open_Palm'],
+  ['Pointing Up', 'Pointing_Up'],
+  ['Thumb Down', 'Thumb_Down'],
+  ['Thumb Up', 'Thumb_Up'],
+  ['Victory', 'Victory'],
+  ['I Love You', 'ILoveYou']
+]
+
+Blockly.Blocks['ai_hand_gesture'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Hand Gesture')
+    this.setOutput(true, 'String')
+    this.setStyle('ai_blocks')
+    this.setTooltip('The most recently recognized built-in hand gesture ("None" if no hand is visible).')
+  }
+}
+
+Blockly.Blocks['ai_gesture_confidence'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Gesture Confidence (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Confidence (0-100) of the most recent hand gesture recognition.')
+  }
+}
+
+Blockly.Blocks['ai_is_gesture'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Gesture =')
+      .appendField(new Blockly.FieldDropdown(AI_GESTURE_OPTIONS), 'GESTURE')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if the most recent hand gesture matches the selected built-in gesture.')
+  }
+}
+
+Blockly.Blocks['ai_hand_detected'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Hand Detected?')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if a hand is currently visible to the camera.')
+  }
+}
+
+// ── Object Detection Blocks ──────────────────────────────────────────────────
+// Built-in general object detection (MediaPipe Object Detector, EfficientDet-Lite0)
+// — 80 fixed COCO categories, no training needed, same shape as the gesture blocks above.
+
+const AI_OBJECT_OPTIONS: [string, string][] = COCO_LABELS.map(label => [label, label])
+
+Blockly.Blocks['ai_detected_object'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Detected Object')
+    this.setOutput(true, 'String')
+    this.setStyle('ai_blocks')
+    this.setTooltip('The most confident object detected by the camera ("None" if nothing is detected).')
+  }
+}
+
+Blockly.Blocks['ai_object_confidence'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Object Confidence (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Confidence (0-100) of the most recent object detection.')
+  }
+}
+
+Blockly.Blocks['ai_is_object'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Object =')
+      .appendField(new Blockly.FieldDropdown(AI_OBJECT_OPTIONS), 'OBJECT')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if the most confident detected object matches the selected category.')
+  }
+}
+
+Blockly.Blocks['ai_object_detected'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Object Detected?')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if any object is currently detected by the camera.')
+  }
+}
+
+// ── Shape Detection Blocks ───────────────────────────────────────────────────
+// Basic 2D geometric shapes (circle, square, rectangle, triangle, pentagon, star)
+// classified via OpenCV.js contour analysis — no training needed, same shape as
+// the gesture/object blocks above, but classical CV rather than a neural model.
+
+const AI_SHAPE_OPTIONS: [string, string][] = SHAPE_LABELS.map(label => [label, label])
+
+Blockly.Blocks['ai_detected_shape'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Detected Shape')
+    this.setOutput(true, 'String')
+    this.setStyle('ai_blocks')
+    this.setTooltip('The most recently recognized 2D shape ("None" if no shape is visible).')
+  }
+}
+
+Blockly.Blocks['ai_shape_confidence'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Shape Confidence (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Confidence (0-100) of the most recent shape detection.')
+  }
+}
+
+Blockly.Blocks['ai_is_shape'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Shape =')
+      .appendField(new Blockly.FieldDropdown(AI_SHAPE_OPTIONS), 'SHAPE')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if the most recently detected shape matches the selected category.')
+  }
+}
+
+Blockly.Blocks['ai_shape_detected'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Shape Detected?')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if a recognizable shape is currently visible to the camera.')
+  }
+}
+
+// ── Face Expression Blocks ───────────────────────────────────────────────────
+// Facial expression classification via face-api.js (TinyFaceDetector + FaceExpressionNet) —
+// a real model trained on expressions, no training needed, same shape as the blocks above.
+
+const AI_EXPRESSION_OPTIONS: [string, string][] = EXPRESSION_LABELS.map(label => [label, label])
+
+Blockly.Blocks['ai_detected_expression'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Detected Expression')
+    this.setOutput(true, 'String')
+    this.setStyle('ai_blocks')
+    this.setTooltip('The most recently recognized facial expression ("None" if no face is visible).')
+  }
+}
+
+Blockly.Blocks['ai_expression_confidence'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Expression Confidence (%)')
+    this.setOutput(true, 'Number')
+    this.setStyle('ai_blocks')
+    this.setTooltip('Confidence (0-100) of the most recent expression classification.')
+  }
+}
+
+Blockly.Blocks['ai_is_expression'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Expression =')
+      .appendField(new Blockly.FieldDropdown(AI_EXPRESSION_OPTIONS), 'EXPRESSION')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if the most recently detected expression matches the selected category.')
+  }
+}
+
+Blockly.Blocks['ai_face_detected'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('AI: Face Detected?')
+    this.setOutput(true, 'Boolean')
+    this.setStyle('ai_blocks')
+    this.setTooltip('True if a face is currently visible to the camera.')
+  }
+}

@@ -17,7 +17,10 @@ export function registerSerialHandlers() {
         try {
           const { execSync } = require('child_process');
           const ps = execSync('powershell -Command "[System.IO.Ports.SerialPort]::GetPortNames()"', { encoding: 'utf8' });
-          const psPorts = ps.trim().split(/\\s+/).filter((p: string) => p.startsWith('COM'));
+          // \s+, not \\s+ — the latter splits on a literal backslash, which this
+          // output never contains, so the whole multi-line list came through as one
+          // bogus "COM15\r\nCOM14\r\n..." entry in the port picker.
+          const psPorts = ps.trim().split(/\s+/).filter((p: string) => p.startsWith('COM'));
           for (const p of psPorts) {
             if (!ports.find(x => x.path === p)) {
               ports.push({ path: p, manufacturer: 'Unknown', friendlyName: p } as any);
@@ -59,7 +62,12 @@ export function registerSerialHandlers() {
     }
   });
 
-  ipcMain.handle('serial:open', async (event, path: string, baudRate: number) => {
+  ipcMain.handle('serial:open', async (
+    event,
+    path: string,
+    baudRate: number,
+    options?: { skipReset?: boolean }
+  ) => {
     return new Promise<{success: boolean, error?: string}>((resolve) => {
       try {
         if (currentPort) {
@@ -71,6 +79,11 @@ export function registerSerialHandlers() {
         currentPort.open((err) => {
           if (err) {
             resolve({ success: false, error: err.message });
+          } else if (options?.skipReset) {
+            // Bluetooth SPP ports are virtual: they carry no DTR/RTS lines to the
+            // board's EN/BOOT pins, so the reset pulse below is meaningless there
+            // (and resetting would only drop the Bluetooth link anyway).
+            resolve({ success: true });
           } else {
             // For ESP32: pulse DTR/RTS to explicitly reboot the board (Arduino IDE behavior).
             // This ensures we catch early setup() logs and don't hold the board in reset.

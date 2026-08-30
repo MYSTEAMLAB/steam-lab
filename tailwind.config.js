@@ -50,9 +50,24 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
+      // Soft, layered depth instead of hard 1px lines — reads friendlier and keeps
+      // the three work areas visually separate without heavy borders.
+      boxShadow: {
+        soft: '0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.06)',
+        lift: '0 6px 18px rgba(15, 23, 42, 0.10)',
+        'glow-primary': '0 0 0 3px rgba(59, 130, 246, 0.18)',
+        'glow-emerald': '0 0 0 3px rgba(16, 185, 129, 0.18)',
+        'glow-violet': '0 0 0 3px rgba(139, 92, 246, 0.18)',
+      },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-in-out',
         'slide-down': 'slideDown 0.2s ease-out',
+        'fade-in-up': 'fadeInUp 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+        pop: 'pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'pulse-soft': 'pulseSoft 2.2s ease-in-out infinite',
+        shimmer: 'shimmer 1.8s linear infinite',
+        float: 'float 4s ease-in-out infinite',
+        'grow-in': 'growIn 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
       },
       keyframes: {
         fadeIn: {
@@ -62,6 +77,30 @@ export default {
         slideDown: {
           '0%': { opacity: '0', transform: 'translateY(-8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pop: {
+          '0%': { transform: 'scale(0.92)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        pulseSoft: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
+        growIn: {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
         },
       }
     },
