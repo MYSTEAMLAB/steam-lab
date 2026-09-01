@@ -778,7 +778,7 @@ export function registerCustomBlocks(): void {
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setStyle('wifi_blocks')
-      this.setTooltip("Starts the ESP32's built-in Bluetooth radio so phones/PCs can discover and pair with it under this name.")
+      this.setTooltip("Every ESP32 board already starts Bluetooth automatically under a fixed name like \"MSL_A1B2C3\" tied to that specific board's hardware — this keeps the same board pairable under the same name no matter what program is flashed to it. This block is kept for older projects; the Name field here no longer changes what the board actually broadcasts.")
     }
   }
 

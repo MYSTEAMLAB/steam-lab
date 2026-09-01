@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Play, UploadCloud, Usb, Wifi, Bluetooth, Loader2, AlertCircle, RefreshCw, Terminal } from 'lucide-react'
+import { Play, UploadCloud, Usb, Wifi, Bluetooth, Loader2, AlertCircle, RefreshCw, Terminal, Settings2 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useT } from '@renderer/lib/i18n/useT'
+import { isMobilePlatform } from '@renderer/lib/mobile/mobileBridge'
 
 export const Toolbar: React.FC = () => {
   const t = useT()
@@ -380,34 +381,59 @@ export const Toolbar: React.FC = () => {
         ) : uploadMode === 'bluetooth' ? (
           /* Paired Bluetooth device picker. Windows names every one of these ports
              "Standard Serial over Bluetooth link", so we show the paired board's own
-             name instead and hide the incoming-only ports, which never connect. */
-          <div className="msl-field">
-            <Bluetooth size={16} className="text-primary-500" />
-            <select
-              value={selectedBtPort}
-              onChange={e => setSelectedBtPort(e.target.value)}
-              disabled={btDevices.filter(d => d.outgoing).length === 0}
-              className="bg-transparent border-none text-sm font-medium text-slate-200 focus:ring-0 outline-none w-48 cursor-pointer disabled:opacity-50"
-            >
-              {btDevices.filter(d => d.outgoing).length === 0 ? (
-                <option value="" disabled>{t('noPairedDevice')}</option>
-              ) : (
-                <option value="" disabled>{t('selectDevice')}</option>
+             name instead and hide the incoming-only ports, which never connect.
+             When nothing's paired yet, show what to actually do about it instead of
+             just a disabled dropdown — boards now advertise as "MSL_<code>" by
+             default (see arduinoGenerator.ts), so naming that convention here is
+             the difference between a dead end and an actionable next step. */
+          btDevices.filter(d => d.outgoing).length === 0 ? (
+            <div className="msl-field !h-auto !items-start flex-col gap-1.5 !py-2 max-w-xs">
+              <div className="flex items-center gap-2 w-full">
+                <Bluetooth size={16} className="text-primary-500 shrink-0" />
+                <span className="text-sm font-medium text-slate-200">{t('noPairedDevice')}</span>
+                <button
+                  onClick={() => fetchBtDevices(true)}
+                  title="Rescan paired Bluetooth devices"
+                  className="ml-auto p-1 rounded-md text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors active:scale-90"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 leading-snug">{t('pairedDeviceHint')}</p>
+              {!isMobilePlatform() && (
+                <button
+                  onClick={() => (window as any).api?.system?.openBluetoothSettings?.()}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary-500 hover:text-primary-400 transition-colors mt-0.5"
+                >
+                  <Settings2 size={13} />
+                  {t('openBluetoothSettings')}
+                </button>
               )}
-              {btDevices.filter(d => d.outgoing).map(d => (
-                <option key={d.path} value={d.path} className="bg-surface-200">
-                  {d.deviceName} ({d.path})
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => fetchBtDevices(true)}
-              title="Rescan paired Bluetooth devices"
-              className="p-1 rounded-md text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors active:scale-90"
-            >
-              <RefreshCw size={14} />
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="msl-field">
+              <Bluetooth size={16} className="text-primary-500" />
+              <select
+                value={selectedBtPort}
+                onChange={e => setSelectedBtPort(e.target.value)}
+                className="bg-transparent border-none text-sm font-medium text-slate-200 focus:ring-0 outline-none w-48 cursor-pointer"
+              >
+                <option value="" disabled>{t('selectDevice')}</option>
+                {btDevices.filter(d => d.outgoing).map(d => (
+                  <option key={d.path} value={d.path} className="bg-surface-200">
+                    {d.deviceName} ({d.path})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => fetchBtDevices(true)}
+                title="Rescan paired Bluetooth devices"
+                className="p-1 rounded-md text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors active:scale-90"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
+          )
         ) : (
           /* OTA IP / Password inputs — IP is printed to Serial by the WiFi
              Connect block's generated code the first time it's flashed over USB. */

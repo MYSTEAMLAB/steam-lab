@@ -6,8 +6,8 @@ import { exec, spawn } from 'child_process';
 import AdmZip from 'adm-zip';
 import { uploadFirmwareOverBluetooth } from './bluetoothHandlers';
 
-const COMPILER_DIR = path.join(app.getPath('userData'), 'compiler');
-const CLI_PATH = path.join(COMPILER_DIR, 'arduino-cli.exe');
+export const COMPILER_DIR = path.join(app.getPath('userData'), 'compiler');
+export const CLI_PATH = path.join(COMPILER_DIR, 'arduino-cli.exe');
 const TEMP_DIR = path.join(app.getPath('temp'), 'edublocks_build');
 
 // Libraries required by sensor/display blocks that are not bundled with the ESP32
@@ -19,7 +19,7 @@ const TEMP_DIR = path.join(app.getPath('temp'), 'edublocks_build');
 // OLED block failed to compile with "Adafruit_SSD1306.h: No such file or
 // directory" — the generator emits the #include, but nothing ever installed the
 // library for it.
-function getRequiredLibraries(code: string): string[] {
+export function getRequiredLibraries(code: string): string[] {
   const libs: string[] = [];
   if (code.includes('<OneWire.h>')) libs.push('OneWire');
   if (code.includes('<DallasTemperature.h>')) libs.push('DallasTemperature');
@@ -66,7 +66,7 @@ function findEspotaPath(): Promise<string | null> {
 // min_spiffs scheme (~1.9 MB per app slot) instead. The partition table is only
 // rewritten during a USB upload — which is precisely why the first upload of a
 // Bluetooth project has to go over the cable before wireless uploads can work.
-function withBluetoothPartition(fqbn: string, code: string): string {
+export function withBluetoothPartition(fqbn: string, code: string): string {
   if (!code.includes('BluetoothSerial.h')) return fqbn;
   if (fqbn.includes('PartitionScheme=')) return fqbn;
   // An FQBN is vendor:arch:board[:opt=val,opt=val] — options join with a comma
@@ -75,7 +75,7 @@ function withBluetoothPartition(fqbn: string, code: string): string {
   return `${fqbn}${hasOptions ? ',' : ':'}PartitionScheme=min_spiffs`;
 }
 
-function ensureLibrariesInstalled(
+export function ensureLibrariesInstalled(
   libs: string[],
   onLog: (msg: string) => void,
   onDone: () => void

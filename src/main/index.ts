@@ -6,6 +6,7 @@ import { registerBoardHandlers } from './ipc/boardHandlers';
 import { registerCompilerHandlers } from './ipc/compilerHandlers';
 import { registerSerialHandlers } from './ipc/serialHandlers';
 import { registerBluetoothHandlers } from './ipc/bluetoothHandlers';
+import { registerLocalCompileServerHandlers } from './localCompileServer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Security note: contextIsolation + contextBridge is the primary security
@@ -167,6 +168,14 @@ app.whenReady().then(() => {
   registerCompilerHandlers();
   registerSerialHandlers();
   registerBluetoothHandlers();
+  registerLocalCompileServerHandlers();
+
+  // Lets the "No paired device" empty state jump straight to Windows'
+  // Bluetooth settings instead of just telling the student to go find it
+  // themselves — pairing still has to happen at the OS level (Electron/Node
+  // has no API for it), this just removes the "where is that setting" step.
+  ipcMain.handle('system:openBluetoothSettings', () => shell.openExternal('ms-settings:bluetooth'));
+
   createWindow();
   setupAutoUpdater();
 

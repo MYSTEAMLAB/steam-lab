@@ -2,6 +2,8 @@ import React from 'react'
 import { AppLayout } from '@renderer/views/AppLayout'
 import { useAppStore } from '@renderer/store/useAppStore'
 import type { AppState, AppActions } from '@renderer/store/useAppStore'
+import { isMobilePlatform } from '@renderer/lib/mobile/mobileBridge'
+import { MobileToolbar } from '@renderer/components/MobileToolbar'
 // @ts-ignore
 import logoUrl from './assets/logo.jpeg'
 
@@ -60,5 +62,12 @@ export const App: React.FC = () => {
     )
   }
 
-  return <AppLayout />
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
+      {isMobilePlatform() && <MobileToolbar />}
+      <div className="flex-1 min-h-0">
+        <AppLayout />
+      </div>
+    </div>
+  )
 }

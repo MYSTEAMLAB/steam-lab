@@ -51,7 +51,34 @@
       "Bash(node \"C:\\\\Users\\\\NAVNEE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--MSL-streamlab-project-code-streamlab-project\\\\09315594-2090-4cc5-b739-c4e417692d2e\\\\scratchpad\\\\sim_check.cjs\")",
       "Bash(node \"C:\\\\Users\\\\NAVNEE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--MSL-streamlab-project-code-streamlab-project\\\\09315594-2090-4cc5-b739-c4e417692d2e\\\\scratchpad\\\\sim_debug.cjs\")",
       "Bash(node \"C:\\\\Users\\\\NAVNEE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--MSL-streamlab-project-code-streamlab-project\\\\09315594-2090-4cc5-b739-c4e417692d2e\\\\scratchpad\\\\sim_broad.cjs\")",
-      "Bash(node \"C:\\\\Users\\\\NAVNEE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--MSL-streamlab-project-code-streamlab-project\\\\09315594-2090-4cc5-b739-c4e417692d2e\\\\scratchpad\\\\i18n_oled_check.cjs\")"
+      "Bash(node \"C:\\\\Users\\\\NAVNEE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--MSL-streamlab-project-code-streamlab-project\\\\09315594-2090-4cc5-b739-c4e417692d2e\\\\scratchpad\\\\i18n_oled_check.cjs\")",
+      "Bash(mkdir -p \"/c/Android/cmdline-tools\" && echo \"created\")",
+      "Bash(curl -L -o cmdline-tools.zip \"https://edgedl.me.gvt1.com/android/studio/cmdline-tools/15859902_latest/commandlinetools-win-15859902_latest.zip\" --progress-bar)",
+      "PowerShell(winget --version 2>&1)",
+      "PowerShell(winget list --id EclipseAdoptium.Temurin.17.JDK 2>&1)",
+      "PowerShell(winget install --id EclipseAdoptium.Temurin.17.JDK -e --source winget --accept-source-agreements --accept-package-agreements --silent 2>&1)",
+      "Bash(mkdir -p \"/c/Android/licenses\")",
+      "Bash(printf '24333f8a63b6825ea9c5514f83c2829b004d1fee\\\\n8933bad161af4178b1185d1a37fbf41ea5269c55\\\\n')",
+      "Bash(printf '84831b9409646a918e30573bab4c9c91346d8abd\\\\n')",
+      "Bash(printf 'd975f751698a77b662f1254ddbeed3901e976f5\\\\n')",
+      "Bash(printf '33b6a2b64607f11b759f320ef9dff4ae5c47d97a\\\\n')",
+      "Bash(curl -s \"https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml\" -o \"/c/Android/sysimg.xml\")",
+      "Read(//c/Android/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node \"C:\\\\Android\\\\hash_license.js\")",
+      "Bash(printf '434392e8fb23341e9e0130b2702e19f236493a42\\\\n')",
+      "Read(//c/Android/licenses//**)",
+      "Bash(ls \"/c/Android/system-images/android-34/google_apis/arm64-v8a/\" 2>&1 | head -5 *)",
+      "Bash(rm -f \"/c/Android/install8.log\")",
+      "Read(//c/Android/platform-tools/**)",
+      "Read(//c/Android/platforms/android-34//**)",
+      "Read(//c/Android/build-tools//**)",
+      "Read(//c/Android/system-images/android-34/google_apis/arm64-v8a/**)",
+      "Read(//c/Android/emulator/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Android"
     ]
   }
 }

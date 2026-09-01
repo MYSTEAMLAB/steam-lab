@@ -99,6 +99,32 @@ html, body, #root {
    they're in. These classes carry that coding to tabs, buttons and headers.
 ───────────────────────────────────────────────────────────────────────────── */
 @layer components {
+  /* ── Mobile toolbar (Capacitor shell only — replaces the desktop OS menu) ── */
+  .mobile-toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 0.5rem;
+    color: #cbd5e1;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .mobile-toolbar-btn:active {
+    background: rgba(148, 163, 184, 0.2);
+  }
+  .mobile-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.8125rem;
+  }
+
   /* ── Tabs ───────────────────────────────────────────────────────────────── */
   .msl-tab {
     position: relative;

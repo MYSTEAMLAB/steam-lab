@@ -53,12 +53,32 @@ arduinoGenerator.init = function(workspace: Blockly.Workspace) {
   arduinoGenerator.definitions_ = Object.create(null)
   arduinoGenerator.functionNames_ = Object.create(null)
 
-  // Declare all variables globally as integers for simplicity in this visual editor
+  // Declare all variables globally, inferring String vs the numeric/boolean
+  // default from how each one is actually assigned in the workspace. A
+  // variable that's ever set to a String-typed block (Bluetooth Read, an AI
+  // Vision result, etc.) has to be declared `String`, not `int` — unlike
+  // int/bool (which silently coerce), C++ flatly refuses to assign a String
+  // to an int, so the "declare everything as int" shortcut this replaced
+  // compiled fine right up until a project actually stored text in a
+  // variable (confirmed: broke the "Bluetooth: Drive a Motor" example, which
+  // stores an incoming Bluetooth command in a variable to compare against).
   const variables = workspace.getVariableMap().getAllVariables()
   if (variables.length > 0) {
+    const allBlocks = workspace.getAllBlocks(false)
     variables.forEach(v => {
       const varName = arduinoGenerator.nameDB_.getName(v.getId(), Blockly.Names.NameType.VARIABLE)
-      arduinoGenerator.definitions_['var_' + varName] = `int ${varName} = 0;`
+      let isString = false
+      for (const block of allBlocks) {
+        if (block.type !== 'variables_set') continue
+        const field = block.getField('VAR') as Blockly.FieldVariable | null
+        if (!field || field.getVariable()?.getId() !== v.getId()) continue
+        const valueBlock = block.getInputTargetBlock('VALUE')
+        const check = valueBlock?.outputConnection?.getCheck()
+        if (check && check.includes('String')) { isString = true; break }
+      }
+      arduinoGenerator.definitions_['var_' + varName] = isString
+        ? `String ${varName} = "";`
+        : `int ${varName} = 0;`
     })
   }
 }
@@ -823,6 +843,21 @@ arduinoGenerator.forBlock['oled_clear'] = function(block: Blockly.Block) {
 // BluetoothSerial examples: it fails the build early with a clear message
 // on core configurations where Bluetooth support was compiled out, instead
 // of a confusing "SerialBT was not declared" error.
+// Called unconditionally for every ESP32 compile (see generateFullArduinoCode,
+// where it deliberately runs AFTER the block pass so it always wins over
+// anything a bluetooth_begin block set) so a freshly-flashed board is
+// immediately reachable over Bluetooth under a name that never changes, no
+// matter what program is on it. The name is computed at boot from the chip's
+// own factory-programmed MAC (ESP.getEfuseMac(), always available on ESP32,
+// no extra include needed) rather than baked in at compile time, so every
+// board gets its own distinct "MSL_XXXXXX" name without the generator
+// needing to track which names are already in use.
+function ensureDefaultBluetooth(): void {
+  ensureBluetoothIncludes();
+  arduinoGenerator.definitions_['setup_bluetooth'] =
+    '  { char _mslBtName[16]; snprintf(_mslBtName, sizeof(_mslBtName), "MSL_%06X", (unsigned int)(ESP.getEfuseMac() & 0xFFFFFF)); SerialBT.begin(_mslBtName); }';
+}
+
 function ensureBluetoothIncludes(): void {
   arduinoGenerator.definitions_['include_bluetooth'] =
     '#include "BluetoothSerial.h"\n' +
@@ -1063,10 +1098,10 @@ export function generateFullArduinoCode(
 
   // Run the core generator to populate definitions_ and collect setup/loop code
   arduinoGenerator.init(workspace)
-  
+
   // We explicitly find system_setup and system_loop to ensure they are at the root
   const topBlocks = workspace.getTopBlocks(false)
-  
+
   let setupCode = ''
   let loopCode = ''
 
@@ -1076,6 +1111,21 @@ export function generateFullArduinoCode(
     } else if (block.type === 'system_loop') {
       loopCode = arduinoGenerator.blockToCode(block) as string
     }
+  }
+
+  // Every ESP32 board powers on advertising Bluetooth as "MSL_<chip-unique
+  // hex>" — always, permanently, no matter what's in the workspace. This
+  // runs AFTER the block pass above on purpose: a bluetooth_begin block (if
+  // present) already ran and set its own custom name into the same
+  // 'setup_bluetooth' key, and this deliberately overwrites it. A custom
+  // per-project name sounds nice, but it means the SAME physical board
+  // shows up as a different-looking Bluetooth device every time a different
+  // program is flashed to it — confusing to pair with and impossible to
+  // reliably reconnect to from a PC. Tying the name to the chip's own
+  // hardware MAC instead of anything program-specific is what makes a board
+  // reliably identifiable across every project ever flashed to it.
+  if (boardId === 'esp32') {
+    ensureDefaultBluetooth()
   }
 
   // 1. Includes

@@ -1240,7 +1240,7 @@ export const EXAMPLES: ExampleProject[] = [
     name: 'Bluetooth: Say Hello',
     category: 'Bluetooth',
     description:
-      'Starts the radio as MY_STEAM_LAB and sends a message every second. Pair the board in Windows, then pick it in BT mode and press Connect.',
+      'Sends a message every second over Bluetooth, which every board starts automatically under a name like "MSL_A1B2C3". Pair the board in Windows, then pick it in BT mode and press Connect.',
     devices: [],
     blocklyWorkspaceJson: program(btBegin('MY_STEAM_LAB'), stack(btSend(str('Hello from the board!')), delay(1000)))
   },

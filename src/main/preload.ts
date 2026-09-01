@@ -46,6 +46,18 @@ const api = {
     listDevices: () => ipcRenderer.invoke('bluetooth:listDevices')
   },
 
+  system: {
+    openBluetoothSettings: (): Promise<void> => ipcRenderer.invoke('system:openBluetoothSettings')
+  },
+
+  mobileServer: {
+    start: (): Promise<{ port: number; pin: string; lanIp: string | null }> =>
+      ipcRenderer.invoke('mobileServer:start'),
+    stop: (): Promise<void> => ipcRenderer.invoke('mobileServer:stop'),
+    status: (): Promise<{ running: boolean; port: number; pin: string; lanIp: string | null }> =>
+      ipcRenderer.invoke('mobileServer:status')
+  },
+
   serial: {
     getPorts: () => ipcRenderer.invoke('serial:getPorts'),
     open: (path: string, baudRate: number, options?: { skipReset?: boolean }) =>

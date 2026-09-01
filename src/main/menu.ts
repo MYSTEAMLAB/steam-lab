@@ -3,6 +3,7 @@ import { getRecentProjects } from './ipc/projectHandlers';
 import { getExampleMenuTree } from '@shared/examples';
 import { basename } from 'path';
 import { checkForUpdatesManually } from './updater';
+import { startLocalCompileServer, stopLocalCompileServer, getLocalCompileServerStatus } from './localCompileServer';
 
 export async function setupApplicationMenu() {
   const showComingSoon = (item: Electron.MenuItem, window: any) => {
@@ -61,6 +62,46 @@ Keyboard Shortcuts:
   const showInfo = (window: any, title: string, message: string) => {
     if (window) dialog.showMessageBox(window, { type: 'info', title, message });
     else dialog.showMessageBox({ type: 'info', title, message });
+  };
+
+  // Lets a phone on the same WiFi compile Arduino sketches through this desktop
+  // app's already-installed toolchain, over a small local HTTP server — no
+  // paid cloud service and no on-device compilation (confirmed infeasible on
+  // Android: the ESP32 GCC toolchain is glibc-linked, Android is Bionic-only).
+  const toggleMobileServer = async (window: any) => {
+    const status = getLocalCompileServerStatus();
+    if (status.running) {
+      const { response } = await dialog.showMessageBox(window, {
+        type: 'info',
+        title: 'Mobile Compile Server',
+        message: `Running at ${status.lanIp ?? 'unknown IP'}:${status.port}\nPairing PIN: ${status.pin}`,
+        detail: 'The MY STEAM LAB Android app on the same WiFi network can compile sketches through this computer.',
+        buttons: ['Stop Server', 'Close'],
+        defaultId: 1,
+        cancelId: 1
+      });
+      if (response === 0) stopLocalCompileServer();
+      return;
+    }
+
+    const { response } = await dialog.showMessageBox(window, {
+      type: 'question',
+      title: 'Mobile Compile Server',
+      message: 'Start the mobile compile server?',
+      detail: 'Lets the MY STEAM LAB Android app on the same WiFi network compile sketches through this computer\'s Arduino toolchain, without needing the internet or a cloud account.',
+      buttons: ['Start Server', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (response !== 0) return;
+
+    const started = startLocalCompileServer();
+    dialog.showMessageBox(window, {
+      type: 'info',
+      title: 'Mobile Compile Server Started',
+      message: `Running at ${started.lanIp ?? 'unknown IP'}:${started.port}\nPairing PIN: ${started.pin}`,
+      detail: 'Enter this address and PIN in the MY STEAM LAB Android app to pair it with this computer.'
+    });
   };
 
   const recents = await getRecentProjects();
@@ -134,7 +175,9 @@ Keyboard Shortcuts:
         { label: 'Library Manager', click: (item, window) => showInfo(window, 'Library Manager', 'Common Arduino libraries are pre-installed. You can place additional libraries in your documents folder.') },
         { type: 'separator' },
         { label: 'Serial Monitor', click: (item, window) => showInfo(window, 'Serial Monitor', 'Please use the Serial Monitor tab located on the right side of the workspace.') },
-        { label: 'Serial Plotter', click: (item, window) => showInfo(window, 'Serial Plotter', 'Serial Plotter is not available in this version. Use the Serial Monitor for text output.') }
+        { label: 'Serial Plotter', click: (item, window) => showInfo(window, 'Serial Plotter', 'Serial Plotter is not available in this version. Use the Serial Monitor for text output.') },
+        { type: 'separator' },
+        { label: 'Mobile Compile Server...', click: (item, window) => toggleMobileServer(window) }
       ]
     },
     {
