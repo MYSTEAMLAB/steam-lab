@@ -1,6 +1,6 @@
 {
   "name": "my-stream-lab",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "MY STEAM LAB - Visual ESP32/Arduino IDE for Students",
   "main": "./out/main/index.cjs",
