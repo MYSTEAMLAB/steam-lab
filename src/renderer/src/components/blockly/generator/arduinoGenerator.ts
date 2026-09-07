@@ -181,6 +181,136 @@ arduinoGenerator.forBlock['output_buzzer_notone'] = function(block: Blockly.Bloc
   return `noTone(${pin});\n`
 }
 
+arduinoGenerator.forBlock['buzzer_play_tone_duration'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block) || '0'
+  const freq = arduinoGenerator.valueToCode(block, 'FREQ', 0) || '1000'
+  const duration = arduinoGenerator.valueToCode(block, 'DURATION', 0) || '500'
+  return `tone(${pin}, ${freq}, ${duration});\ndelay(${duration});\nnoTone(${pin});\n`
+}
+
+// ── Melody playback (RTTTL) ────────────────────────────────────────────────
+// "play custom melody" takes a standard RTTTL string (Name:controls:notes —
+// the same format shown in the block's default value), and "play melody"
+// picks from a few classic tunes stored in the same format. Both funnel
+// through one real RTTTL parser rather than needing per-melody C++ code.
+const BUZZER_MELODY_PRESETS: Record<string, string> = {
+  MARIO: 'Mario:d=4,o=5,b=100:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b',
+  HAPPY_BIRTHDAY: 'Happy:d=4,o=5,b=125:8g,16g,a,g,c6,2b,8g,16g,a,g,d6,2c6,8g,16g,g6,e6,c6,b,a,8f6,16f6,e6,c6,d6,2c6',
+  TWINKLE: 'Twinkle:d=4,o=5,b=100:c,c,g,g,a,a,2g,f,f,e,e,d,d,2c,g,g,f,f,e,e,2d,g,g,f,f,e,e,2d,c,c,g,g,a,a,2g,f,f,e,e,d,d,2c',
+  JINGLE_BELLS: 'Jingle:d=4,o=5,b=140:8e,8e,4e,8e,8e,4e,8e,8g,8c,8d,2e,8f,8f,8f,8f,8f,8e,8e,8e,8e,8d,8d,8e,8d,2g',
+
+  // ── Devotional bell tones ──────────────────────────────────────────────
+  // A piezo buzzer plays one note at a time — it can't sing or chant, so
+  // these are simple, respectful bell/chime melodies *inspired by* each
+  // mantra's name, not a note-for-note transcription of the actual chant
+  // (which is sung, not a fixed instrumental tune, and varies by tradition
+  // and reciter). Meant for a devotional-feeling notification tone, not as
+  // a substitute for the real chant.
+  OM: 'Om:d=1,o=3,b=40:c,c,c',
+  AARTI_BELL: 'Aarti:d=8,o=6,b=160:c,e,g,c7,g,e,c,e,g,c7,g,e,c,e,g,c7',
+  GAYATRI_MANTRA: 'Gayatri:d=4,o=5,b=60:e,g,a,g,e,d,c,d,e,2c',
+  OM_JAI_JAGDISH_HARE: 'OmJai:d=4,o=5,b=100:g,g,a,g,e,g,a,2g,e,g,a,g,e,d,2c',
+  HANUMAN_CHALISA: 'Hanuman:d=4,o=5,b=80:c,d,e,d,c,2d,e,f,e,d,2c',
+  MAHAMRITYUNJAYA: 'Mrityunjaya:d=2,o=4,b=50:c,d,e,g,e,d,2c',
+  GANESH_VANDANA: 'Ganesh:d=4,o=5,b=90:g,a,g,e,d,e,g,2e'
+}
+
+function ensureBuzzerMelodyRuntime(): void {
+  if (arduinoGenerator.definitions_['func_buzzer_melody']) return
+  arduinoGenerator.definitions_['func_buzzer_melody'] = 'true'
+
+  arduinoGenerator.functionNames_['msRtttlNoteFreq'] = `
+int msRtttlNoteFreq(char note, bool sharp, int octave) {
+  int idx;
+  switch (note) {
+    case 'a': idx = 9; break;
+    case 'b': idx = 11; break;
+    case 'c': idx = 0; break;
+    case 'd': idx = 2; break;
+    case 'e': idx = 4; break;
+    case 'f': idx = 5; break;
+    case 'g': idx = 7; break;
+    default: return 0; // 'p' (pause/rest) or anything unrecognized
+  }
+  if (sharp) idx += 1;
+  double freq = 440.0 * pow(2.0, (octave - 4) + (idx - 9) / 12.0);
+  return (int) round(freq);
+}
+`
+  // Standard RTTTL parser: "Name:d=defaultDuration,o=defaultOctave,b=bpm:notes".
+  // tempoBpm > 0 overrides the b= value embedded in the string, so the block's
+  // own tempo field always wins without the user having to re-edit the string.
+  arduinoGenerator.functionNames_['msPlayRTTTL'] = `
+void msPlayRTTTL(const String& rtttl, int pin, int tempoBpm) {
+  int firstColon = rtttl.indexOf(':');
+  int secondColon = rtttl.indexOf(':', firstColon + 1);
+  if (firstColon < 0 || secondColon < 0) return;
+  String control = rtttl.substring(firstColon + 1, secondColon);
+  String notes = rtttl.substring(secondColon + 1);
+
+  int defaultDuration = 4, defaultOctave = 5, bpm = tempoBpm > 0 ? tempoBpm : 125;
+  int pos = 0;
+  while (pos < (int)control.length()) {
+    int comma = control.indexOf(',', pos);
+    if (comma < 0) comma = control.length();
+    String token = control.substring(pos, comma);
+    if (token.startsWith("d=")) defaultDuration = token.substring(2).toInt();
+    else if (token.startsWith("o=")) defaultOctave = token.substring(2).toInt();
+    else if (token.startsWith("b=") && tempoBpm <= 0) bpm = token.substring(2).toInt();
+    pos = comma + 1;
+  }
+  if (defaultDuration <= 0) defaultDuration = 4;
+  if (bpm <= 0) bpm = 125;
+
+  double wholeNoteMs = 240000.0 / bpm;
+  int i = 0, n = notes.length();
+  while (i < n) {
+    int durStart = i;
+    while (i < n && isDigit(notes[i])) i++;
+    int duration = (i > durStart) ? notes.substring(durStart, i).toInt() : defaultDuration;
+    if (duration <= 0) duration = defaultDuration;
+    if (i >= n) break;
+
+    char note = tolower(notes[i]); i++;
+    bool sharp = false;
+    if (i < n && notes[i] == '#') { sharp = true; i++; }
+    int octStart = i;
+    while (i < n && isDigit(notes[i])) i++;
+    int octave = (i > octStart) ? notes.substring(octStart, i).toInt() : defaultOctave;
+    bool dotted = false;
+    if (i < n && notes[i] == '.') { dotted = true; i++; }
+    if (i < n && notes[i] == ',') i++;
+
+    double ms = wholeNoteMs / duration;
+    if (dotted) ms *= 1.5;
+
+    int freq = msRtttlNoteFreq(note, sharp, octave);
+    if (freq > 0) tone(pin, freq, (int)(ms * 0.9));
+    else noTone(pin);
+    delay((int) ms);
+    noTone(pin);
+  }
+}
+`
+}
+
+arduinoGenerator.forBlock['buzzer_play_melody'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block) || '0'
+  ensureBuzzerMelodyRuntime()
+  const melody = block.getFieldValue('MELODY') || 'MARIO'
+  const rtttl = BUZZER_MELODY_PRESETS[melody] || BUZZER_MELODY_PRESETS.MARIO
+  const tempo = arduinoGenerator.valueToCode(block, 'TEMPO', 0) || '0'
+  return `msPlayRTTTL(String("${rtttl}"), ${pin}, ${tempo});\n`
+}
+
+arduinoGenerator.forBlock['buzzer_play_custom_melody'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block) || '0'
+  ensureBuzzerMelodyRuntime()
+  const rtttl = (block.getFieldValue('MELODY') || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  const tempo = arduinoGenerator.valueToCode(block, 'TEMPO', 0) || '0'
+  return `msPlayRTTTL(String("${rtttl}"), ${pin}, ${tempo});\n`
+}
+
 arduinoGenerator.forBlock['output_servo_write'] = function(block: Blockly.Block) {
   const pin = getPinFieldValue(block);
   if (!isValidPin(pin)) return '';
@@ -836,6 +966,391 @@ arduinoGenerator.forBlock['oled_clear'] = function(block: Blockly.Block) {
   return `display.clearDisplay();\n`
 }
 
+// ── LED Matrix (6x6 WS2812, AI Junior's fixed onboard display) ────────────
+// Parses a Blockly FieldColour hex string ("#rrggbb") into a CRGB(r,g,b)
+// constructor call — the field always yields 7-char lowercase hex, but the
+// fallback covers a block loaded from an older/hand-edited save.
+function hexToCRGB(hex: string): string {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '')
+  if (!m) return 'CRGB::White'
+  const r = parseInt(m[1].substring(0, 2), 16)
+  const g = parseInt(m[1].substring(2, 4), 16)
+  const b = parseInt(m[1].substring(4, 6), 16)
+  return `CRGB(${r}, ${g}, ${b})`
+}
+
+// 6x6 pixel font — one uint8_t per row, bits 5..0 = columns left..right.
+// Covers space, 0-9, A-Z and a handful of punctuation; enough for labels,
+// scores, and short status text on a display this small.
+const LED_MATRIX_FONT6X6: Record<string, number[]> = {
+  ' ': [0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+  '0': [0x1E, 0x33, 0x37, 0x37, 0x33, 0x1E],
+  '1': [0x0C, 0x1C, 0x0C, 0x0C, 0x0C, 0x1E],
+  '2': [0x1E, 0x33, 0x06, 0x0C, 0x18, 0x3F],
+  '3': [0x1E, 0x33, 0x0E, 0x06, 0x33, 0x1E],
+  '4': [0x06, 0x0E, 0x16, 0x3F, 0x06, 0x06],
+  '5': [0x3F, 0x30, 0x3E, 0x03, 0x33, 0x1E],
+  '6': [0x0E, 0x18, 0x3F, 0x33, 0x33, 0x1E],
+  '7': [0x3F, 0x03, 0x06, 0x0C, 0x0C, 0x0C],
+  '8': [0x1E, 0x33, 0x1E, 0x33, 0x33, 0x1E],
+  '9': [0x1E, 0x33, 0x33, 0x1F, 0x06, 0x1C],
+  'A': [0x1E, 0x33, 0x33, 0x3F, 0x33, 0x33],
+  'B': [0x3E, 0x33, 0x3E, 0x33, 0x33, 0x3E],
+  'C': [0x1E, 0x33, 0x30, 0x30, 0x33, 0x1E],
+  'D': [0x3C, 0x36, 0x33, 0x33, 0x36, 0x3C],
+  'E': [0x3F, 0x30, 0x3C, 0x30, 0x30, 0x3F],
+  'F': [0x3F, 0x30, 0x3C, 0x30, 0x30, 0x30],
+  'G': [0x1E, 0x30, 0x37, 0x33, 0x33, 0x1E],
+  'H': [0x33, 0x33, 0x3F, 0x33, 0x33, 0x33],
+  'I': [0x1E, 0x0C, 0x0C, 0x0C, 0x0C, 0x1E],
+  'J': [0x07, 0x03, 0x03, 0x03, 0x33, 0x1E],
+  'K': [0x33, 0x36, 0x3C, 0x36, 0x33, 0x33],
+  'L': [0x30, 0x30, 0x30, 0x30, 0x30, 0x3F],
+  'M': [0x33, 0x3F, 0x3F, 0x33, 0x33, 0x33],
+  'N': [0x33, 0x3B, 0x3F, 0x37, 0x33, 0x33],
+  'O': [0x1E, 0x33, 0x33, 0x33, 0x33, 0x1E],
+  'P': [0x3E, 0x33, 0x3E, 0x30, 0x30, 0x30],
+  'Q': [0x1E, 0x33, 0x33, 0x37, 0x33, 0x1F],
+  'R': [0x3E, 0x33, 0x3E, 0x36, 0x33, 0x33],
+  'S': [0x1E, 0x30, 0x1E, 0x03, 0x03, 0x3E],
+  'T': [0x3F, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C],
+  'U': [0x33, 0x33, 0x33, 0x33, 0x33, 0x1E],
+  'V': [0x33, 0x33, 0x33, 0x33, 0x1E, 0x0C],
+  'W': [0x33, 0x33, 0x33, 0x3F, 0x3F, 0x33],
+  'X': [0x33, 0x33, 0x1E, 0x1E, 0x33, 0x33],
+  'Y': [0x33, 0x33, 0x1E, 0x0C, 0x0C, 0x0C],
+  'Z': [0x3F, 0x03, 0x06, 0x0C, 0x18, 0x3F],
+  '-': [0x00, 0x00, 0x3F, 0x00, 0x00, 0x00],
+  '.': [0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C],
+  '!': [0x0C, 0x0C, 0x0C, 0x0C, 0x00, 0x0C],
+  '?': [0x1E, 0x33, 0x06, 0x0C, 0x00, 0x0C]
+}
+const LED_MATRIX_FONT_CHARS = Object.keys(LED_MATRIX_FONT6X6).join('')
+
+// Small single-color 6x6 icon set for the "show pattern" block — same byte
+// format as the font above (bits 5..0 = columns left..right per row).
+const LED_MATRIX_PATTERNS: Record<string, number[]> = {
+  HEART:       [0x1B, 0x3F, 0x3F, 0x1E, 0x0C, 0x00],
+  SMILEY:      [0x1E, 0x2D, 0x3F, 0x2D, 0x2D, 0x1E],
+  SAD:         [0x1E, 0x2D, 0x3F, 0x1E, 0x2D, 0x1E],
+  CHECK:       [0x01, 0x03, 0x06, 0x36, 0x1C, 0x08],
+  CROSS:       [0x21, 0x12, 0x0C, 0x0C, 0x12, 0x21],
+  STAR:        [0x08, 0x1C, 0x3F, 0x1C, 0x14, 0x22],
+  ARROW_UP:    [0x08, 0x1C, 0x3F, 0x08, 0x08, 0x08],
+  ARROW_DOWN:  [0x08, 0x08, 0x08, 0x3F, 0x1C, 0x08],
+  ARROW_LEFT:  [0x04, 0x0C, 0x1F, 0x0C, 0x04, 0x00],
+  ARROW_RIGHT: [0x08, 0x0C, 0x3E, 0x0C, 0x08, 0x00],
+  SQUARE:      [0x00, 0x1E, 0x12, 0x12, 0x1E, 0x00],
+  DIAMOND:     [0x08, 0x14, 0x22, 0x14, 0x08, 0x00]
+}
+
+// Base runtime (array, brightness, rotation-aware pixel writer, clear/fill/
+// setPixel) — shared by every LED Matrix block. Font/pattern/animation
+// helpers are added separately, only when a block actually needs them, so a
+// project that only sets pixel colors doesn't pay for an unused font table.
+function ensureLedMatrixRuntime(pin: string): void {
+  if (arduinoGenerator.definitions_['var_led_matrix']) return
+
+  arduinoGenerator.definitions_['include_fastled'] = '#include <FastLED.h>'
+  arduinoGenerator.definitions_['var_led_matrix'] =
+    `#define MS_LED_MATRIX_COUNT 36\nCRGB msLedMatrixLeds[MS_LED_MATRIX_COUNT];\n` +
+    `uint8_t msLedMatrixRotation = 0; // 0-3, quarter turns clockwise, set by the Rotate block`
+  arduinoGenerator.definitions_['setup_led_matrix'] =
+    `  FastLED.addLeds<WS2812B, ${pin}, GRB>(msLedMatrixLeds, MS_LED_MATRIX_COUNT);\n  FastLED.setBrightness(50);\n  FastLED.clear();\n  FastLED.show();`
+
+  // Every drawing helper below writes through this so "Rotate Matrix"
+  // affects everything (pixels, characters, text, patterns, animations)
+  // consistently, without each helper needing its own rotation logic.
+  arduinoGenerator.functionNames_['msLedMatrixIndex'] = `
+int msLedMatrixIndex(int x, int y) {
+  int rx = x, ry = y;
+  for (uint8_t r = 0; r < msLedMatrixRotation; r++) {
+    int nx = 5 - ry;
+    int ny = rx;
+    rx = nx; ry = ny;
+  }
+  return ry * 6 + rx;
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixClear'] = `
+void msLedMatrixClear() {
+  fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);
+  FastLED.show();
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixFill'] = `
+void msLedMatrixFill(CRGB color) {
+  fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, color);
+  FastLED.show();
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixSetPixel'] = `
+void msLedMatrixSetPixel(int x, int y, CRGB color) {
+  if (x < 0 || x > 5 || y < 0 || y > 5) return;
+  msLedMatrixLeds[msLedMatrixIndex(x, y)] = color;
+  FastLED.show();
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixSetBrightness'] = `
+void msLedMatrixSetBrightness(uint8_t level) {
+  FastLED.setBrightness(level);
+  FastLED.show();
+}
+`
+  // Draws a raw 6-row bitmap (bits 5..0 = columns left..right) in one color,
+  // rotation-aware. Shared by the font, pattern, and animation helpers below.
+  arduinoGenerator.functionNames_['msLedMatrixDrawBitmap'] = `
+void msLedMatrixDrawBitmap(const uint8_t bits[6], CRGB color) {
+  fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);
+  for (int row = 0; row < 6; row++) {
+    for (int col = 0; col < 6; col++) {
+      if (bits[row] & (1 << (5 - col))) msLedMatrixLeds[msLedMatrixIndex(col, row)] = color;
+    }
+  }
+  FastLED.show();
+}
+`
+}
+
+function ensureLedMatrixFont(pin: string): void {
+  ensureLedMatrixRuntime(pin)
+  if (arduinoGenerator.definitions_['var_led_matrix_font']) return
+
+  const rows = Object.values(LED_MATRIX_FONT6X6)
+    .map(bytes => `  { ${bytes.map(b => '0x' + b.toString(16).toUpperCase()).join(', ')} }`)
+    .join(',\n')
+  arduinoGenerator.definitions_['var_led_matrix_font'] =
+    `static const char MS_FONT_CHARS[] = "${LED_MATRIX_FONT_CHARS}";\n` +
+    `static const uint8_t MS_FONT_DATA[][6] = {\n${rows}\n};`
+
+  arduinoGenerator.functionNames_['msLedMatrixFontIndex'] = `
+int msLedMatrixFontIndex(char c) {
+  c = toupper(c);
+  for (int i = 0; i < (int)(sizeof(MS_FONT_CHARS) - 1); i++) {
+    if (MS_FONT_CHARS[i] == c) return i;
+  }
+  return 0;
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixShowChar'] = `
+void msLedMatrixShowChar(const String& s, CRGB color) {
+  if (s.length() == 0) { msLedMatrixClear(); return; }
+  msLedMatrixDrawBitmap(MS_FONT_DATA[msLedMatrixFontIndex(s[0])], color);
+}
+`
+  // Blocking marquee scroll: text enters from the right column-by-column and
+  // exits to the left, one matrix refresh per "speedMs" delay. Simple and
+  // predictable rather than millis()-based/non-blocking, matching how the
+  // rest of this generator's animation-style helpers (e.g. oled_blink) work.
+  arduinoGenerator.functionNames_['msLedMatrixScrollText'] = `
+void msLedMatrixScrollText(const String& text, CRGB color, int speedMs) {
+  int n = text.length();
+  if (n == 0) { msLedMatrixClear(); return; }
+  int totalCols = n * 7 - 1;
+  for (int offset = -6; offset <= totalCols; offset++) {
+    fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);
+    for (int c = 0; c < 6; c++) {
+      int vcol = offset + c;
+      if (vcol < 0 || vcol > totalCols) continue;
+      int charIndex = vcol / 7;
+      int colInChar = vcol % 7;
+      if (colInChar >= 6 || charIndex >= n) continue;
+      int idx = msLedMatrixFontIndex(text[charIndex]);
+      for (int row = 0; row < 6; row++) {
+        uint8_t rowBits = MS_FONT_DATA[idx][row];
+        if (rowBits & (1 << (5 - colInChar))) msLedMatrixLeds[msLedMatrixIndex(c, row)] = color;
+      }
+    }
+    FastLED.show();
+    delay(speedMs);
+  }
+}
+`
+}
+
+function ensureLedMatrixPatterns(pin: string): void {
+  ensureLedMatrixRuntime(pin)
+  if (arduinoGenerator.definitions_['var_led_matrix_patterns']) return
+
+  const entries = Object.entries(LED_MATRIX_PATTERNS)
+    .map(([name, bytes]) => `static const uint8_t MS_PATTERN_${name}[6] = { ${bytes.map(b => '0x' + b.toString(16).toUpperCase()).join(', ')} };`)
+    .join('\n')
+  arduinoGenerator.definitions_['var_led_matrix_patterns'] = entries
+}
+
+function ensureLedMatrixAnimations(pin: string): void {
+  ensureLedMatrixPatterns(pin)
+  if (arduinoGenerator.definitions_['func_led_matrix_anim']) return
+  arduinoGenerator.definitions_['func_led_matrix_anim'] = 'true'
+
+  arduinoGenerator.functionNames_['msLedMatrixAnimDiagonal'] = `
+void msLedMatrixAnimDiagonal(CRGB color, int frameMs) {
+  for (int i = 0; i < 6; i++) {
+    fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);
+    msLedMatrixLeds[msLedMatrixIndex(i, i)] = color;
+    if (i + 1 < 6) msLedMatrixLeds[msLedMatrixIndex(i + 1, i)] = color;
+    FastLED.show();
+    delay(frameMs);
+  }
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixAnimSpinner'] = `
+void msLedMatrixAnimSpinner(CRGB color, int frameMs) {
+  static const uint8_t perimX[] = {0,1,2,3,4,5,5,5,5,5,5,4,3,2,1,0,0,0,0,0};
+  static const uint8_t perimY[] = {0,0,0,0,0,0,1,2,3,4,5,5,5,5,5,5,4,3,2,1};
+  for (int cycle = 0; cycle < 2; cycle++) {
+    for (int i = 0; i < 20; i++) {
+      fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);
+      msLedMatrixLeds[msLedMatrixIndex(perimX[i], perimY[i])] = color;
+      FastLED.show();
+      delay(frameMs);
+    }
+  }
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixAnimPulseHeart'] = `
+void msLedMatrixAnimPulseHeart(CRGB color, int frameMs) {
+  for (int cycle = 0; cycle < 2; cycle++) {
+    for (int b = 20; b <= 220; b += 40) {
+      FastLED.setBrightness(b);
+      msLedMatrixDrawBitmap(MS_PATTERN_HEART, color);
+      delay(frameMs);
+    }
+    for (int b = 220; b >= 20; b -= 40) {
+      FastLED.setBrightness(b);
+      msLedMatrixDrawBitmap(MS_PATTERN_HEART, color);
+      delay(frameMs);
+    }
+  }
+  FastLED.setBrightness(50);
+}
+`
+  arduinoGenerator.functionNames_['msLedMatrixAnimBlinkAll'] = `
+void msLedMatrixAnimBlinkAll(CRGB color, int frameMs) {
+  for (int i = 0; i < 4; i++) {
+    msLedMatrixFill(color);
+    delay(frameMs);
+    msLedMatrixClear();
+    delay(frameMs);
+  }
+}
+`
+}
+
+arduinoGenerator.forBlock['led_matrix_set_pixel'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  const state = block.getFieldValue('STATE') || 'ON'
+  const color = state === 'ON' ? hexToCRGB(block.getFieldValue('COLOR')) : 'CRGB::Black'
+  const x = arduinoGenerator.valueToCode(block, 'X', 0) || '0'
+  const y = arduinoGenerator.valueToCode(block, 'Y', 0) || '0'
+  return `msLedMatrixSetPixel(${x}, ${y}, ${color});\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_fill'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  return `msLedMatrixFill(${color});\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_clear'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  return `msLedMatrixClear();\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_set_brightness'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  const level = arduinoGenerator.valueToCode(block, 'LEVEL', 0) || '50'
+  return `msLedMatrixSetBrightness(${level});\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_show_char'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixFont(pin)
+  const char = arduinoGenerator.valueToCode(block, 'CHAR', 0) || '""'
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  const brightness = arduinoGenerator.valueToCode(block, 'BRIGHTNESS', 0) || '50'
+  return `msLedMatrixSetBrightness(${brightness});\nmsLedMatrixShowChar(String(${char}), ${color});\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_show_text'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixFont(pin)
+  const text = arduinoGenerator.valueToCode(block, 'TEXT', 0) || '""'
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  const brightness = arduinoGenerator.valueToCode(block, 'BRIGHTNESS', 0) || '50'
+  const speed = arduinoGenerator.valueToCode(block, 'SPEED', 0) || '80'
+  return `msLedMatrixSetBrightness(${brightness});\nmsLedMatrixScrollText(String(${text}), ${color}, ${speed});\n`
+}
+
+// "show LEDs" — the pixel-art grid is edited directly on the block (see
+// FieldPixelGrid), so codegen just reads the resulting 36-char '0'/'1'
+// string at BLOCK-BUILD time and emits one setPixel-style write per lit
+// cell. No runtime bitmap parsing needed — the block IS the bitmap.
+arduinoGenerator.forBlock['led_matrix_show_leds'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  const brightness = arduinoGenerator.valueToCode(block, 'BRIGHTNESS', 0) || '50'
+  const pixels = (block.getFieldValue('PIXELS') || '0'.repeat(36)) as string
+
+  let code = `msLedMatrixSetBrightness(${brightness});\n`
+  code += `fill_solid(msLedMatrixLeds, MS_LED_MATRIX_COUNT, CRGB::Black);\n`
+  for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 6; col++) {
+      if (pixels[row * 6 + col] === '1') {
+        code += `msLedMatrixLeds[msLedMatrixIndex(${col}, ${row})] = ${color};\n`
+      }
+    }
+  }
+  code += `FastLED.show();\n`
+  return code
+}
+
+arduinoGenerator.forBlock['led_matrix_show_pattern'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixPatterns(pin)
+  const pattern = block.getFieldValue('PATTERN') || 'HEART'
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  return `msLedMatrixDrawBitmap(MS_PATTERN_${pattern}, ${color});\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_show_animation'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixAnimations(pin)
+  const anim = block.getFieldValue('ANIMATION') || 'DIAGONAL'
+  const color = hexToCRGB(block.getFieldValue('COLOR'))
+  const fnByAnim: Record<string, string> = {
+    DIAGONAL: 'msLedMatrixAnimDiagonal',
+    SPINNER: 'msLedMatrixAnimSpinner',
+    PULSE_HEART: 'msLedMatrixAnimPulseHeart',
+    BLINK_ALL: 'msLedMatrixAnimBlinkAll'
+  }
+  const fn = fnByAnim[anim] || fnByAnim.DIAGONAL
+  return `${fn}(${color}, 120);\n`
+}
+
+arduinoGenerator.forBlock['led_matrix_rotate'] = function(block: Blockly.Block) {
+  const pin = getPinFieldValue(block)
+  if (!isValidPin(pin)) return ''
+  ensureLedMatrixRuntime(pin)
+  const degrees = block.getFieldValue('DEGREES') || '0'
+  const quarterTurns = String(Math.round((parseInt(degrees, 10) || 0) / 90) % 4)
+  return `msLedMatrixRotation = ${quarterTurns};\n`
+}
+
 // ESP32 WROOM's built-in Bluetooth radio (Classic BT), driven via the Arduino
 // core's own BluetoothSerial library — no external module or GPIO pins
 // involved, unlike the wired-serial approach this used to generate. The
@@ -857,6 +1372,64 @@ function ensureDefaultBluetooth(): void {
   arduinoGenerator.definitions_['setup_bluetooth'] =
     '  { char _mslBtName[16]; snprintf(_mslBtName, sizeof(_mslBtName), "MSL_%06X", (unsigned int)(ESP.getEfuseMac() & 0xFFFFFF)); SerialBT.begin(_mslBtName); }';
 }
+
+// Backs the tracer_listen block — see the Blockly block definition in
+// customBlocks.ts for the protocol this parses ("F:<ms>" drive straight,
+// "T:<ms>" pivot-turn, positive right/negative left, "X" stop) and why it's
+// duration-based (no wheel encoders on this hardware, so elapsed time is the
+// only lever available to approximate distance/angle — dead reckoning, not
+// exact). Fixed to motor1 (left, in1=18/in2=19) and motor2 (right,
+// in1=17/in2=5), the same pin convention every other 2-motor example in this
+// app already uses.
+function ensureTracerRuntime(): void {
+  if (arduinoGenerator.definitions_['func_tracer']) return;
+  ensureBluetoothIncludes();
+  arduinoGenerator.definitions_['func_tracer'] = 'true';
+
+  arduinoGenerator.functionNames_['tracerSetMotors'] = `
+void tracerSetMotors(int leftSpeed, int rightSpeed) {
+  if (leftSpeed >= 0) { analogWrite(18, leftSpeed); analogWrite(19, 0); }
+  else { analogWrite(18, 0); analogWrite(19, -leftSpeed); }
+  if (rightSpeed >= 0) { analogWrite(17, rightSpeed); analogWrite(5, 0); }
+  else { analogWrite(17, 0); analogWrite(5, -rightSpeed); }
+}
+`;
+
+  arduinoGenerator.functionNames_['tracerHandleCommands'] = `
+void tracerHandleCommands() {
+  if (!SerialBT.available()) return;
+  String cmd = SerialBT.readStringUntil('\\n');
+  cmd.trim();
+  if (cmd.length() < 1) return;
+
+  char type = cmd.charAt(0);
+  if (type == 'X') {
+    tracerSetMotors(0, 0);
+    return;
+  }
+  if (cmd.length() < 3 || cmd.charAt(1) != ':') return;
+  long ms = cmd.substring(2).toInt();
+
+  if (type == 'F') {
+    tracerSetMotors(200, 200);
+    delay(ms);
+    tracerSetMotors(0, 0);
+  } else if (type == 'T') {
+    if (ms >= 0) tracerSetMotors(200, -200);
+    else tracerSetMotors(-200, 200);
+    delay(abs(ms));
+    tracerSetMotors(0, 0);
+  }
+}
+`;
+
+  arduinoGenerator.definitions_['loop_tracer'] = '  tracerHandleCommands();\n';
+}
+
+arduinoGenerator.forBlock['tracer_listen'] = function(_block: Blockly.Block) {
+  ensureTracerRuntime();
+  return '';
+};
 
 function ensureBluetoothIncludes(): void {
   arduinoGenerator.definitions_['include_bluetooth'] =
@@ -1124,13 +1697,13 @@ export function generateFullArduinoCode(
   // reliably reconnect to from a PC. Tying the name to the chip's own
   // hardware MAC instead of anything program-specific is what makes a board
   // reliably identifiable across every project ever flashed to it.
-  if (boardId === 'esp32') {
+  if (boardId === 'esp32' || boardId === 'ai-junior') {
     ensureDefaultBluetooth()
   }
 
   // 1. Includes
   const includes = new Set<string>()
-  if (boardId === 'esp32' || boardId === 'arduino-uno') {
+  if (boardId === 'esp32' || boardId === 'ai-junior' || boardId === 'arduino-uno') {
     includes.add('#include <Arduino.h>')
   }
   if (Object.keys(arduinoGenerator.definitions_).some(k => k.startsWith('include_'))) {
@@ -1276,7 +1849,7 @@ String tcsClassifyColor() {
   // Pin the ESP32 ADC to 12-bit whenever an analog sensor is on the board. 12-bit is
   // the core default, but stating it makes the 0-4095 range the blocks/thresholds
   // assume explicit, and immune to anything else changing the resolution.
-  if (boardId === 'esp32') {
+  if (boardId === 'esp32' || boardId === 'ai-junior') {
     const hasAnalogIn = devices.some(d => {
       const reqs = COMPONENT_REQUIREMENTS[d.type]
       if (!reqs) return false
@@ -1289,7 +1862,7 @@ String tcsClassifyColor() {
   }
 
   // Inject analogWrite polyfill for ESP32 older cores if PWM is used
-  if (boardId === 'esp32') {
+  if (boardId === 'esp32' || boardId === 'ai-junior') {
     const hasPwm = devices.some(d => {
       const reqs = COMPONENT_REQUIREMENTS[d.type]
       if (!reqs) return false
@@ -1400,6 +1973,10 @@ arduinoGenerator.forBlock['input_color_temperature'] = function(_block: Blockly.
 arduinoGenerator.forBlock['input_color_is'] = function(block: Blockly.Block) {
   const colorName = block.getFieldValue('COLOR_NAME') || 'Red';
   return [`(tcsClassifyColor() == "${colorName}")`, 0];
+};
+
+arduinoGenerator.forBlock['input_color_name'] = function(_block: Blockly.Block) {
+  return [`tcsClassifyColor()`, 0];
 };
 
 // 2. Motors

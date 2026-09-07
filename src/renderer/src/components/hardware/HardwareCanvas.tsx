@@ -1,23 +1,32 @@
 // Interactive Hardware Canvas component for wiring and board rendering
 import React, { useState, useRef, useEffect } from 'react'
-import { useAppStore } from '@renderer/store/useAppStore'
+import { ZoomIn, ZoomOut, Maximize } from 'lucide-react'
+import { useAppStore, isFixedBoardDevice } from '@renderer/store/useAppStore'
 import { InteractiveBoard } from './InteractiveBoard'
 import { boardRegistry } from '@shared/boards'
 import {
   LEDComponent, ButtonComponent, ServoComponent, GenericComponent, LDRComponent, JoystickComponent, BuzzerComponent,
   PotentiometerComponent, TempSensorComponent, DHT11Component, IRSensorComponent, TouchSensorComponent,
-  UltrasonicComponent, DCMotorComponent, MotorDriverComponent, OledComponent, ColorSensorComponent
+  UltrasonicComponent, DCMotorComponent, MotorDriverComponent, OledComponent, ColorSensorComponent,
+  LedMatrixComponent, OnboardMicComponent
 } from './components/ComponentRenderers'
 import { COMPONENT_PIN_OFFSETS } from './components/pinOffsets'
 import { PropertiesPanel } from './PropertiesPanel'
+import { ComponentPalette } from './ComponentPalette'
 
 export const HardwareCanvas: React.FC = () => {
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
-  
+
   // Component Dragging State
   const [draggingDevice, setDraggingDevice] = useState<string | null>(null)
+
+  // Board (PCB) position — movable within the canvas, independent of pan/zoom,
+  // so the chip itself can be repositioned like any other placed component.
+  const [boardOffset, setBoardOffset] = useState({ x: 100, y: 100 })
+  const [draggingBoard, setDraggingBoard] = useState(false)
+  const boardDragStart = useRef({ mouseX: 0, mouseY: 0, boardX: 0, boardY: 0 })
 
   const lastMouse = useRef({ x: 0, y: 0 })
   const svgRef = useRef<SVGSVGElement>(null)
@@ -78,6 +87,16 @@ export const HardwareCanvas: React.FC = () => {
       }
     }
 
+    // Handle board (PCB) dragging — delta-based off the grab point, so the
+    // board doesn't jump to snap its origin under the cursor like a device
+    // drag would (fine for small components, jarring for the whole PCB).
+    if (draggingBoard) {
+      const dx = (e.clientX - boardDragStart.current.mouseX) / scale
+      const dy = (e.clientY - boardDragStart.current.mouseY) / scale
+      setBoardOffset({ x: boardDragStart.current.boardX + dx, y: boardDragStart.current.boardY + dy })
+      return
+    }
+
     if (!isDragging) return
     const dx = e.clientX - lastMouse.current.x
     const dy = e.clientY - lastMouse.current.y
@@ -88,7 +107,16 @@ export const HardwareCanvas: React.FC = () => {
   const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false)
     setDraggingDevice(null)
+    setDraggingBoard(false)
     if (svgRef.current) svgRef.current.releasePointerCapture(e.pointerId)
+  }
+
+  const handleBoardPointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    setSelectedItemId(null)
+    setDraggingBoard(true)
+    boardDragStart.current = { mouseX: e.clientX, mouseY: e.clientY, boardX: boardOffset.x, boardY: boardOffset.y }
+    if (svgRef.current) svgRef.current.setPointerCapture(e.pointerId)
   }
 
   // Calculate grid pattern scaling
@@ -140,7 +168,11 @@ export const HardwareCanvas: React.FC = () => {
   }
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-surface-DEFAULT overflow-hidden select-none">
+    <div className="absolute inset-0 w-full h-full bg-surface-DEFAULT overflow-hidden select-none flex flex-col">
+      <div className="h-14 shrink-0">
+        <ComponentPalette />
+      </div>
+      <div className="relative flex-1 min-h-0">
       <svg
         ref={svgRef}
         className="w-full h-full touch-none"
@@ -168,12 +200,13 @@ export const HardwareCanvas: React.FC = () => {
         <rect width="100%" height="100%" fill="url(#canvas-grid)" />
 
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-          {/* Board will render here, centered or offset */}
-          <g transform="translate(100, 100)">
-            <InteractiveBoard 
+          {/* Board will render here — position is user-draggable via boardOffset */}
+          <g transform={`translate(${boardOffset.x}, ${boardOffset.y})`}>
+            <InteractiveBoard
               boardConfig={fullBoardConfig}
               onPinClick={() => {}}
               activeWireSource={null}
+              onBoardPointerDown={handleBoardPointerDown}
             />
           </g>
           
@@ -192,7 +225,7 @@ export const HardwareCanvas: React.FC = () => {
               // 1. Board Pin Coordinate
               const boardPinCoord = fullBoardConfig.pinCoordinates[pinStr]
               if (!boardPinCoord) return null
-              const p1 = { x: boardPinCoord.x + 100, y: boardPinCoord.y + 100 }
+              const p1 = { x: boardPinCoord.x + boardOffset.x, y: boardPinCoord.y + boardOffset.y }
 
               // 2. Component Pin Coordinate
               const getPrimaryPinName = (type: string) => {
@@ -246,6 +279,8 @@ export const HardwareCanvas: React.FC = () => {
             if (device.type === 'motor_driver') Renderer = MotorDriverComponent
             if (device.type === 'oled') Renderer = OledComponent
             if (device.type === 'color_sensor') Renderer = ColorSensorComponent
+            if (device.type === 'led_matrix') Renderer = LedMatrixComponent
+            if (device.type === 'onboard_mic') Renderer = OnboardMicComponent
 
             const mappedPins: string[] = []
             if (typeof device.mappedPin === 'string' && device.mappedPin) {
@@ -254,19 +289,21 @@ export const HardwareCanvas: React.FC = () => {
               Object.values(device.mappedPin).forEach(p => { if (typeof p === 'string' && p) mappedPins.push(p) })
             }
             const displayPinText = mappedPins.join(' | ')
-            
+            const isFixed = selectedBoard ? isFixedBoardDevice(selectedBoard.id, device.id) : false
+
             return (
-              <g 
-                key={device.id} 
+              <g
+                key={device.id}
                 transform={`translate(${device.canvasX}, ${device.canvasY})`}
                 onClick={(e) => { e.stopPropagation(); setSelectedItemId(device.id) }}
                 onPointerDown={(e) => {
                   e.stopPropagation()
                   setSelectedItemId(device.id)
+                  if (isFixed) return
                   setDraggingDevice(device.id)
                   if (svgRef.current) svgRef.current.setPointerCapture(e.pointerId)
                 }}
-                className={`cursor-grab active:cursor-grabbing hover:drop-shadow-[0_0_12px_rgba(56,189,248,0.5)] transition-all ${draggingDevice === device.id ? 'opacity-80' : ''}`}
+                className={`${isFixed ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'} hover:drop-shadow-[0_0_12px_rgba(56,189,248,0.5)] transition-all ${draggingDevice === device.id ? 'opacity-80' : ''}`}
               >
                 <Renderer 
                   device={device} 
@@ -306,25 +343,39 @@ export const HardwareCanvas: React.FC = () => {
       <PropertiesPanel />
       
       {/* Zoom controls UI overlay */}
-      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
+      <div className="absolute bottom-6 right-6 flex flex-col items-stretch rounded-xl bg-surface-50/95 backdrop-blur border border-panel-border shadow-lift overflow-hidden">
         <button
           onClick={() => setScale(s => Math.min(5, s * 1.2))}
-          className="w-8 h-8 rounded-lg bg-surface-100 border border-panel-border flex items-center justify-center text-slate-300 hover:bg-surface-200"
+          title="Zoom in"
+          className="w-9 h-9 flex items-center justify-center text-slate-300 hover:bg-primary-50 hover:text-primary-600 transition-colors active:scale-95"
         >
-          +
+          <ZoomIn size={16} />
         </button>
+        <div className="h-px bg-panel-border" />
         <button
-          onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }) }}
-          className="w-8 h-8 rounded-lg bg-surface-100 border border-panel-border flex items-center justify-center text-slate-300 hover:bg-surface-200"
+          onClick={() => setScale(1)}
+          title="Reset zoom"
+          className="text-[10px] font-mono font-semibold tabular-nums h-7 flex items-center justify-center text-slate-400 hover:bg-primary-50 hover:text-primary-600 transition-colors active:scale-95"
         >
-          •
+          {Math.round(scale * 100)}%
         </button>
+        <div className="h-px bg-panel-border" />
         <button
           onClick={() => setScale(s => Math.max(0.2, s / 1.2))}
-          className="w-8 h-8 rounded-lg bg-surface-100 border border-panel-border flex items-center justify-center text-slate-300 hover:bg-surface-200"
+          title="Zoom out"
+          className="w-9 h-9 flex items-center justify-center text-slate-300 hover:bg-primary-50 hover:text-primary-600 transition-colors active:scale-95"
         >
-          -
+          <ZoomOut size={16} />
         </button>
+        <div className="h-px bg-panel-border" />
+        <button
+          onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); setBoardOffset({ x: 100, y: 100 }) }}
+          title="Fit / center board"
+          className="w-9 h-9 flex items-center justify-center text-slate-300 hover:bg-primary-50 hover:text-primary-600 transition-colors active:scale-95"
+        >
+          <Maximize size={14} />
+        </button>
+      </div>
       </div>
     </div>
   )

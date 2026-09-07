@@ -103,7 +103,8 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'input_color_clear' },
         { kind: 'block', type: 'input_color_lux' },
         { kind: 'block', type: 'input_color_temperature' },
-        { kind: 'block', type: 'input_color_is' }
+        { kind: 'block', type: 'input_color_is' },
+        { kind: 'block', type: 'input_color_name' }
       ]
     },
 
@@ -160,6 +161,7 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'bluetooth_send' },
         { kind: 'block', type: 'bluetooth_read' },
         { kind: 'block', type: 'bluetooth_available' },
+        { kind: 'block', type: 'tracer_listen' },
         { kind: 'label', text: 'WiFi' },
         { kind: 'block', type: 'wifi_connect' },
         { kind: 'block', type: 'wifi_status' },
@@ -191,6 +193,41 @@ export function generateToolboxJson(selectedBoard: BoardSummary | null, devices:
         { kind: 'block', type: 'oled_draw_text' },
         { kind: 'block', type: 'oled_set_cursor' },
         { kind: 'block', type: 'oled_clear' }
+      ]
+    },
+
+    // ── 9b. LED Matrix (AI Junior's fixed onboard 6x6 display) ─────────────
+    {
+      kind: 'category',
+      name: 'LED Matrix',
+      categorystyle: 'system_category',
+      contents: [
+        { kind: 'block', type: 'led_matrix_show_char' },
+        { kind: 'block', type: 'led_matrix_show_text' },
+        { kind: 'block', type: 'led_matrix_show_leds' },
+        { kind: 'block', type: 'led_matrix_show_pattern' },
+        { kind: 'block', type: 'led_matrix_show_animation' },
+        { kind: 'block', type: 'led_matrix_rotate' },
+        { kind: 'block', type: 'led_matrix_set_pixel' },
+        { kind: 'block', type: 'led_matrix_fill' },
+        { kind: 'block', type: 'led_matrix_clear' },
+        { kind: 'block', type: 'led_matrix_set_brightness' }
+      ]
+    },
+
+    // ── 9c. Buzzer ───────────────────────────────────────────────────────
+    {
+      kind: 'category',
+      name: 'Buzzer',
+      categorystyle: 'output_category',
+      contents: [
+        { kind: 'block', type: 'output_buzzer_on' },
+        { kind: 'block', type: 'output_buzzer_off' },
+        { kind: 'block', type: 'output_buzzer_tone' },
+        { kind: 'block', type: 'output_buzzer_notone' },
+        { kind: 'block', type: 'buzzer_play_tone_duration' },
+        { kind: 'block', type: 'buzzer_play_melody' },
+        { kind: 'block', type: 'buzzer_play_custom_melody' }
       ]
     },
 

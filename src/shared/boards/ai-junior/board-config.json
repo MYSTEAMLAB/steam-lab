@@ -1,0 +1,26 @@
+{
+  "id": "ai-junior",
+  "name": "AI Junior (6x6 Matrix)",
+  "description": "Navneet ESP32 MIC RGB 6x6 Matrix — fixed onboard LED matrix, mic, 2 motors, 4 buttons, buzzer",
+  "fqbn": "esp32:esp32:esp32",
+  "coreRequired": "esp32:esp32",
+  "boardImage": "ai-junior.svg",
+  "dimensions": { "width": 680, "height": 460 },
+  "pinCoordinates": {
+    "GPIO39": { "x": 626, "y": 90 },
+    "GPIO34": { "x": 626, "y": 190 },
+    "GPIO35": { "x": 626, "y": 290 },
+    "GPIO21": { "x": 54, "y": 70 },
+    "GPIO22": { "x": 54, "y": 90 },
+    "GPIO16": { "x": 626, "y": 370 },
+    "GPIO4":  { "x": 626, "y": 390 }
+  },
+  "capabilities": [
+    "DIGITAL_IO",
+    "ANALOG_IN",
+    "PWM",
+    "UART",
+    "WIFI",
+    "BLUETOOTH"
+  ]
+}

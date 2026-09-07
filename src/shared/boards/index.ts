@@ -15,6 +15,10 @@ import esp32Pinmap from './esp32/pinmap.json'
 import unoConfig from './arduino-uno/board-config.json'
 // @ts-ignore
 import unoPinmap from './arduino-uno/pinmap.json'
+// @ts-ignore
+import aiJuniorConfig from './ai-junior/board-config.json'
+// @ts-ignore
+import aiJuniorPinmap from './ai-junior/pinmap.json'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal Board Registry
@@ -71,12 +75,14 @@ class BoardRegistryManager {
 export const boardRegistry = new BoardRegistryManager([
   { config: esp32Config as BoardConfig, pinmap: esp32Pinmap as PinMap },
   { config: unoConfig as BoardConfig,   pinmap: unoPinmap  as PinMap },
+  { config: aiJuniorConfig as BoardConfig, pinmap: aiJuniorPinmap as PinMap },
 ])
 
 /** Convenience re-export of all board ids for type-safe usage */
 export const BOARD_IDS = {
   ESP32: 'esp32',
   ARDUINO_UNO: 'arduino-uno',
+  AI_JUNIOR: 'ai-junior',
 } as const
 
 export type BoardId = (typeof BOARD_IDS)[keyof typeof BOARD_IDS]

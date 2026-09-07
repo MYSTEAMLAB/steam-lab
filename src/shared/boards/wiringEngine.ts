@@ -140,6 +140,28 @@ export const COMPONENT_REQUIREMENTS: Record<string, ComponentPinRequirements> = 
     },
     mustNotBeInputOnly: true,
     description: 'Requires I2C SDA and SCL pins'
+  },
+  // ── AI Junior fixed-hardware peripherals ──────────────────────────────────
+  // Only meaningful on the ai-junior board — these are pre-wired onboard
+  // parts (6x6 WS2812 matrix, INMP441 I2S mic), not generic pluggable
+  // components, so they're auto-seeded onto the canvas rather than offered
+  // in the palette. Still registered here so pin validation/pinMode
+  // injection treats them like any other device.
+  led_matrix: {
+    type: 'WS2812 LED Matrix',
+    requiredInterfaces: ['DIGITAL_OUT'],
+    mustNotBeInputOnly: true,
+    description: 'Requires one digital output pin driving all 36 LEDs'
+  },
+  onboard_mic: {
+    type: 'I2S Microphone',
+    requiredInterfaces: {
+      sd: ['DIGITAL_IN'],
+      ws: ['DIGITAL_OUT'],
+      sck: ['DIGITAL_OUT']
+    },
+    mustNotBeInputOnly: true,
+    description: 'Requires I2S SD (data), WS (word select), and SCK (bit clock) pins'
   }
 }
 
@@ -245,6 +267,50 @@ export function validatePinAssignment(deviceType: string, pinName: string, board
         return { valid: false, error: `Pin ${pinName} lacks required capability: ${reqInterface}.` }
       }
     }
+  }
+
+  return { valid: true }
+}
+
+/**
+ * Same check as validatePinAssignment, but for multi-pin devices (mappedPin
+ * is an object, e.g. a motor's {in1, in2} or a mic's {sd, ws, sck}).
+ * validatePinAssignment alone can't do this — it checks one bare pin name
+ * against the device's requirements as a whole, with no way to know which
+ * named slot (in1 vs in2) that pin is supposed to satisfy. Every key must
+ * exist on the board, meet its own specific interface requirement, and not
+ * collide with any other already-assigned pin.
+ */
+export function validateMultiPinAssignment(
+  deviceType: string,
+  mappedPin: Record<string, string>,
+  boardId: string,
+  otherAssignedPins: Set<string>
+): { valid: boolean; error?: string } {
+  const reqs = COMPONENT_REQUIREMENTS[deviceType]
+  if (!reqs || Array.isArray(reqs.requiredInterfaces)) return { valid: true }
+
+  const pinMap = boardRegistry.getPinMap(boardId)
+  const seenInThisDevice = new Set<string>()
+
+  for (const [key, requiredInterfaces] of Object.entries(reqs.requiredInterfaces)) {
+    const pinName = mappedPin[key]
+    if (!pinName) return { valid: false, error: `Missing pin for "${key}".` }
+
+    const pinDef = pinMap.pins[pinName]
+    if (!pinDef) return { valid: false, error: `Pin ${pinName} does not exist on this board.` }
+    if (reqs.mustNotBeInputOnly && pinDef.inputOnly) {
+      return { valid: false, error: `Pin ${pinName} is input-only.` }
+    }
+    for (const reqInterface of requiredInterfaces) {
+      if (!pinDef.interfaces.includes(reqInterface)) {
+        return { valid: false, error: `Pin ${pinName} lacks required capability: ${reqInterface}.` }
+      }
+    }
+    if (seenInThisDevice.has(pinName) || otherAssignedPins.has(pinName)) {
+      return { valid: false, error: `Pin ${pinName} is already in use.` }
+    }
+    seenInThisDevice.add(pinName)
   }
 
   return { valid: true }

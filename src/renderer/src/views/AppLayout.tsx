@@ -1,17 +1,17 @@
 import React from 'react'
-import { BookOpen, Code2, Cpu, Layers, Minus, Square, X, Terminal, Cable, Camera, PlayCircle } from 'lucide-react'
+import { BookOpen, Code2, Cpu, Minus, Square, X, Terminal, Cable, Camera, PlayCircle, Route } from 'lucide-react'
 import { BoardSelector } from '@renderer/components/BoardSelector'
-import { BoardPreviewWidget } from '@renderer/components/BoardPreviewWidget'
+import { PcbTypeSelector } from '@renderer/components/PcbTypeSelector'
 import { BlocklyWorkspace } from '@renderer/components/blockly/BlocklyWorkspace'
 import { GeneratorObserver } from '@renderer/components/blockly/generator/GeneratorObserver'
 import { MonacoEditorPanel } from '@renderer/components/editor/MonacoEditorPanel'
 import { PromptDialog } from '@renderer/components/dialogs/PromptDialog'
 // Interactive visual hardware canvas
 import { HardwareCanvas } from '../components/hardware/HardwareCanvas'
-import { ComponentPalette } from '../components/hardware/ComponentPalette'
 import { ActiveConnectionsPanel } from '../components/hardware/ActiveConnectionsPanel'
 import { AIVisionPanel } from '../components/ai/AIVisionPanel'
 import { SimulatorPanel } from '../components/simulator/SimulatorPanel'
+import { TracerRunPanel } from '../components/tracer/TracerRunPanel'
 import { useAppStore, selectSelectedBoard, selectIsDirty } from '@renderer/store/useAppStore'
 import { Toolbar } from '@renderer/components/Toolbar'
 import { ToolchainInstaller } from '@renderer/components/ToolchainInstaller'
@@ -36,31 +36,6 @@ export const AppLayout: React.FC = () => {
 
   // Initialize Project Manager
   useProjectManager()
-
-  // ── Left panel (Components / Hardware Preview) resizable width ──────────
-  const [leftPanelWidth, setLeftPanelWidth] = React.useState(288)
-  const isResizingLeftRef = React.useRef(false)
-
-  const handleLeftResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault()
-    isResizingLeftRef.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!isResizingLeftRef.current) return
-      setLeftPanelWidth(Math.min(480, Math.max(220, moveEvent.clientX)))
-    }
-    const handleMouseUp = () => {
-      isResizingLeftRef.current = false
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-  }
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-DEFAULT text-slate-200 select-none">
@@ -112,8 +87,9 @@ export const AppLayout: React.FC = () => {
           )}
         </div>
 
-        {/* Center: Board Selector */}
-        <div className="absolute left-1/2 -translate-x-1/2 app-no-drag">
+        {/* Center: PCB Type + Board Selector */}
+        <div className="absolute left-1/2 -translate-x-1/2 app-no-drag flex items-center gap-2">
+          <PcbTypeSelector />
           <BoardSelector />
         </div>
 
@@ -131,46 +107,12 @@ export const AppLayout: React.FC = () => {
       {/* ── Main Body ───────────────────────────────────────────────────── */}
       <main className="flex flex-1 overflow-hidden">
 
-        {/* ── Left Panel: Components + Hardware Preview ───────────────────
-            Only shown on the Hardware Canvas tab — Components is the only
-            way to drag parts onto the canvas, so it stays even though
-            Hardware Preview now lives here too instead of on Blocks/AI. */}
-        {activeTab === 'hardware' && (
-          <>
-            <aside
-              id="panel-left"
-              style={{ width: leftPanelWidth }}
-              className="
-                flex flex-col shrink-0
-                bg-surface-50 border-r border-panel-border
-                overflow-hidden
-              "
-            >
-              {/* Components gets the lion's share of the height — it's the panel
-                  students actually use to build their circuit. Hardware Preview
-                  is a fixed, compact strip pinned below it, not an equal-height
-                  rival for space. */}
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden border-b border-panel-border">
-                <PanelHeader icon={<Layers size={13} />} title={t('panelComponents')} />
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <ComponentPalette />
-                </div>
-              </div>
-              <div className="h-36 shrink-0 flex flex-col overflow-hidden">
-                <PanelHeader icon={<Cpu size={13} />} title={t('panelHardwarePreview')} />
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <BoardPreviewWidget board={selectedBoard} />
-                </div>
-              </div>
-            </aside>
-
-            {/* Drag handle to resize the left panel */}
-            <div
-              onMouseDown={handleLeftResizeStart}
-              className="w-1 shrink-0 cursor-col-resize bg-panel-border hover:bg-primary-500/60 active:bg-primary-500 transition-colors"
-            />
-          </>
-        )}
+        {/* Components used to live in a left sidebar here, alongside a Hardware
+            Preview widget. Both are gone now: Components moved into a
+            horizontal strip along the top of the canvas itself (see
+            HardwareCanvas.tsx) so the canvas gets the full width, and Hardware
+            Preview was dropped as redundant — the actual board is already
+            rendered live on the canvas. */}
 
         {/* ── Center Panel: Main Workspace ──────────────────────────────── */}
         <section
@@ -203,6 +145,12 @@ export const AppLayout: React.FC = () => {
             >
               <PlayCircle size={14} /> {t('tabSimulator')}
             </button>
+            <button
+              onClick={() => setActiveTab('tracer')}
+              className={`msl-tab ${activeTab === 'tracer' ? 'msl-tab-active text-rose-600' : ''}`}
+            >
+              <Route size={14} /> Tracer Run
+            </button>
           </div>
 
           <div className="flex-1 min-h-0 relative overflow-hidden bg-surface-50">
@@ -218,6 +166,9 @@ export const AppLayout: React.FC = () => {
             </div>
             <div className={`absolute inset-0 ${activeTab === 'simulator' ? 'block' : 'hidden'}`}>
               <SimulatorPanel />
+            </div>
+            <div className={`absolute inset-0 ${activeTab === 'tracer' ? 'block' : 'hidden'}`}>
+              {activeTab === 'tracer' && <TracerRunPanel />}
             </div>
           </div>
         </section>
@@ -294,15 +245,3 @@ export const AppLayout: React.FC = () => {
     </div>
   )
 }
-
-interface PanelHeaderProps {
-  icon: React.ReactNode
-  title: string
-}
-
-const PanelHeader: React.FC<PanelHeaderProps> = ({ icon, title }) => (
-  <div className="msl-panel-header">
-    <span className="text-primary-500">{icon}</span>
-    <span>{title}</span>
-  </div>
-)

@@ -1,4 +1,5 @@
 import type { PlacedDevice } from '../types/project'
+import { AI_JUNIOR_FIXED_DEVICES } from '../boards/ai-junior/fixedDevices'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Built-in example projects (File ▸ Examples)
@@ -27,10 +28,23 @@ export interface ExampleProject {
     | 'Programming Concepts'
     | 'Bluetooth'
     | 'WiFi & AI'
+    | 'AI Junior'
   description: string
   devices: PlacedDevice[]
   blocklyWorkspaceJson: any
+  /** Board this example targets. Omit for ESP32 (the default) — the loader
+   *  switches to this board before placing devices, so e.g. an AI Junior
+   *  example opens correctly even if the user currently has ESP32 selected. */
+  board?: 'esp32' | 'ai-junior'
 }
+
+/** AI Junior's onboard fixed hardware plus whatever else this example plugs
+ *  in (an ultrasonic/OLED on their dedicated headers, a sensor on J3/J4/J5).
+ *  Examples replace a board's whole device list on load (not merge), so
+ *  every AI-Junior-targeted example must include the fixed set explicitly
+ *  or opening it would wipe the mic/matrix/motors/buttons/buzzer off the
+ *  canvas. */
+const aiJuniorDevices = (...extra: PlacedDevice[]): PlacedDevice[] => [...AI_JUNIOR_FIXED_DEVICES, ...extra]
 
 // ── Small helpers so the workspace JSON below stays readable ─────────────────
 
@@ -140,6 +154,38 @@ const oledIcon = (devId: string, icon: string, x: any, y: any) => ({
   type: 'oled_icon', fields: { PIN: devId, ICON: icon }, inputs: { X: { block: x }, Y: { block: y } }
 })
 
+// ── LED Matrix (AI Junior's fixed onboard 6x6 display) ────────────────────
+const LED_MATRIX = 'GPIO15'
+const ledMatrixSetPixel = (x: any, y: any, state: 'ON' | 'OFF', color: string) => ({
+  type: 'led_matrix_set_pixel', fields: { PIN: LED_MATRIX, STATE: state, COLOR: color }, inputs: { X: { block: x }, Y: { block: y } }
+})
+const ledMatrixFill = (color: string) => ({ type: 'led_matrix_fill', fields: { PIN: LED_MATRIX, COLOR: color } })
+const ledMatrixClear = () => ({ type: 'led_matrix_clear', fields: { PIN: LED_MATRIX } })
+const ledMatrixSetBrightness = (level: any) => ({ type: 'led_matrix_set_brightness', fields: { PIN: LED_MATRIX }, inputs: { LEVEL: { block: level } } })
+const ledMatrixShowChar = (ch: any, color: string, brightness: any) => ({
+  type: 'led_matrix_show_char', fields: { PIN: LED_MATRIX, COLOR: color }, inputs: { CHAR: { block: ch }, BRIGHTNESS: { block: brightness } }
+})
+const ledMatrixShowText = (text: any, color: string, brightness: any, speed: any) => ({
+  type: 'led_matrix_show_text', fields: { PIN: LED_MATRIX, COLOR: color }, inputs: { TEXT: { block: text }, BRIGHTNESS: { block: brightness }, SPEED: { block: speed } }
+})
+const ledMatrixShowLeds = (pixels: string, color: string, brightness: any) => ({
+  type: 'led_matrix_show_leds', fields: { PIN: LED_MATRIX, COLOR: color, PIXELS: pixels }, inputs: { BRIGHTNESS: { block: brightness } }
+})
+const ledMatrixShowPattern = (pattern: string, color: string) => ({ type: 'led_matrix_show_pattern', fields: { PIN: LED_MATRIX, PATTERN: pattern, COLOR: color } })
+const ledMatrixShowAnimation = (anim: string, color: string) => ({ type: 'led_matrix_show_animation', fields: { PIN: LED_MATRIX, ANIMATION: anim, COLOR: color } })
+const ledMatrixRotate = (degrees: '0' | '90' | '180' | '270') => ({ type: 'led_matrix_rotate', fields: { PIN: LED_MATRIX, DEGREES: degrees } })
+
+// ── Buzzer melodies (RTTTL) ────────────────────────────────────────────────
+const buzzerPlayToneDuration = (devId: string, freq: any, duration: any) => ({
+  type: 'buzzer_play_tone_duration', fields: { PIN: devId }, inputs: { FREQ: { block: freq }, DURATION: { block: duration } }
+})
+const buzzerPlayMelody = (devId: string, melody: string, tempo: any) => ({
+  type: 'buzzer_play_melody', fields: { PIN: devId, MELODY: melody }, inputs: { TEMPO: { block: tempo } }
+})
+const buzzerPlayCustomMelody = (devId: string, rtttl: string, tempo: any) => ({
+  type: 'buzzer_play_custom_melody', fields: { PIN: devId, MELODY: rtttl }, inputs: { TEMPO: { block: tempo } }
+})
+
 // ── Sensor read/condition helpers ─────────────────────────────────────────────
 const readLdr = (pin: string) => ({ type: 'input_ldr_read_analog', fields: { PIN: pin } })
 const isDark = (pin: string, threshold = 1000) => ({ type: 'input_ldr_is_dark', fields: { PIN: pin, THRESHOLD: threshold } })
@@ -157,6 +203,7 @@ const readColorClear = () => ({ type: 'input_color_clear' })
 const readColorLux = () => ({ type: 'input_color_lux' })
 const readColorTemperature = () => ({ type: 'input_color_temperature' })
 const colorIs = (name: 'Red' | 'Green' | 'Blue' | 'Yellow' | 'White' | 'Black') => ({ type: 'input_color_is', fields: { COLOR_NAME: name } })
+const colorName = () => ({ type: 'input_color_name' })
 const buttonPressed = (pin: string) => ({ type: 'input_button_pressed', fields: { PIN: pin } })
 const buttonRaw = (pin: string) => ({ type: 'input_button_read', fields: { PIN: pin } })
 const readJoy1 = (axis: 'VRX' | 'VRY') => ({ type: 'input_joystick1_read', fields: { AXIS: axis } })
@@ -164,6 +211,7 @@ const readJoy2 = (axis: 'VRX' | 'VRY') => ({ type: 'input_joystick2_read', field
 
 // ── Bluetooth / WiFi / AI helpers ─────────────────────────────────────────────
 const btBegin = (name: string) => ({ type: 'bluetooth_begin', fields: { NAME: name } })
+const tracerListen = () => ({ type: 'tracer_listen' })
 const btSend = (text: any) => ({ type: 'bluetooth_send', inputs: { TEXT: { block: text } } })
 const btRead = () => ({ type: 'bluetooth_read' })
 const btAvailable = () => ({ type: 'bluetooth_available' })
@@ -346,9 +394,17 @@ export const EXAMPLES: ExampleProject[] = [
 
   {
     id: 'color-sensor-report',
-    name: 'Color Sensor: RGB Report',
+    name: 'Color Sensor: Name Report',
     category: 'Sensors',
-    description: 'Prints the raw Red, Green and Blue channel readings from the TCS34725 color sensor every half second — watch the numbers change as you hold different colored objects up to it.',
+    description: 'Prints the detected color\'s name (Red, Green, Blue, Yellow, White, Black or Unknown) to the Serial Monitor every half second — hold different colored objects up to the sensor and watch the name change.',
+    devices: [device('color1', 'color_sensor', { sda: '13', scl: '15' }, 120, 120)],
+    blocklyWorkspaceJson: program(null, stack(serialPrint(colorName()), delay(500)))
+  },
+  {
+    id: 'color-sensor-raw-values',
+    name: 'Color Sensor: Raw RGB Values',
+    category: 'Sensors',
+    description: 'Prints the raw Red, Green and Blue channel numbers from the TCS34725 — useful for understanding what the sensor actually measures before trusting the Name Report / Is Color blocks.',
     devices: [device('color1', 'color_sensor', { sda: '13', scl: '15' }, 120, 120)],
     blocklyWorkspaceJson: program(
       null,
@@ -374,20 +430,51 @@ export const EXAMPLES: ExampleProject[] = [
     ],
     blocklyWorkspaceJson: program(
       oledInit('oled1'),
+      stack(oledClear('oled1'), oledPrint('oled1', colorName()), delay(400))
+    )
+  },
+  {
+    id: 'color-traffic-light',
+    name: 'Color Sensor: Traffic Light Match',
+    category: 'Mini Projects',
+    description: 'Lights the matching LED — red, green or blue — for whatever color the sensor is pointed at, and turns all three off otherwise.',
+    devices: [
+      device('color1', 'color_sensor', { sda: '13', scl: '15' }, 100, 60),
+      device('ledR', 'led', '18', 300, 40),
+      device('ledG', 'led', '17', 300, 140),
+      device('ledB', 'led', '16', 300, 240)
+    ],
+    blocklyWorkspaceJson: program(
+      null,
       stack(
-        oledClear('oled1'),
-        ifElse(colorIs('Red'), oledPrint('oled1', str('Red')),
-          ifElse(colorIs('Green'), oledPrint('oled1', str('Green')),
-            ifElse(colorIs('Blue'), oledPrint('oled1', str('Blue')),
-              ifElse(colorIs('Yellow'), oledPrint('oled1', str('Yellow')),
-                ifElse(colorIs('White'), oledPrint('oled1', str('White')),
-                  ifElse(colorIs('Black'), oledPrint('oled1', str('Black')), oledPrint('oled1', str('Unknown')))
-                )
-              )
-            )
+        digitalWrite('18', 'LOW'), digitalWrite('17', 'LOW'), digitalWrite('16', 'LOW'),
+        ifElse(colorIs('Red'), digitalWrite('18', 'HIGH'),
+          ifElse(colorIs('Green'), digitalWrite('17', 'HIGH'),
+            ifElse(colorIs('Blue'), digitalWrite('16', 'HIGH'))
           )
         ),
-        delay(400)
+        delay(200)
+      )
+    )
+  },
+  {
+    id: 'color-sorting-servo',
+    name: 'Color Sensor: Sorting Servo',
+    category: 'Mini Projects',
+    description: 'Swings a servo arm to a different position for Red, Green or Blue objects — the core mechanism of a color-sorting machine. Centers when nothing matches.',
+    devices: [
+      device('color1', 'color_sensor', { sda: '13', scl: '15' }, 100, 60),
+      device('servo1', 'servo', '23', 320, 120)
+    ],
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(colorIs('Red'), servoWrite('23', num(0)),
+          ifElse(colorIs('Green'), servoWrite('23', num(90)),
+            ifElse(colorIs('Blue'), servoWrite('23', num(180)), servoWrite('23', num(45)))
+          )
+        ),
+        delay(300)
       )
     )
   },
@@ -757,6 +844,18 @@ export const EXAMPLES: ExampleProject[] = [
         delay(100)
       )
     )
+  },
+  {
+    id: 'tracer-path-follower',
+    name: 'Robot Tracer: Path Follower',
+    category: 'Bluetooth',
+    description:
+      'Upload this once, then open the Tracer Run tab on the desktop app, draw a path on screen, and the board retraces it. Requires two DC motors — motor1 as the left wheel, motor2 as the right.',
+    devices: [
+      device('motor1', 'dcmotor', { in1: '18', in2: '19' }, 120, 60),
+      device('motor2', 'dcmotor', { in1: '17', in2: '5' }, 120, 200)
+    ],
+    blocklyWorkspaceJson: program(null, stack(tracerListen()))
   },
   {
     id: 'rc-car-full-steering',
@@ -1474,6 +1573,738 @@ export const EXAMPLES: ExampleProject[] = [
         delay(200)
       )
     )
+  },
+
+  // ── AI Junior: LED Matrix showcase ─────────────────────────────────────────
+  {
+    id: 'matrix-show-letter',
+    name: 'LED Matrix: Show a Letter',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Displays a single character filling the whole 6x6 matrix. Try changing the letter or color.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowChar(str('A'), '#00ff00', num(80))))
+  },
+  {
+    id: 'matrix-scrolling-name',
+    name: 'LED Matrix: Scrolling Banner',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Scrolls "HELLO" across the matrix, one column at a time — swap in your own name or message.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowText(str('HELLO'), '#ffff00', num(60), num(80))))
+  },
+  {
+    id: 'matrix-custom-face',
+    name: 'LED Matrix: Custom Pixel Face',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Draws a hand-picked pixel-art winking face using the "show LEDs" block — click cells on the block itself to design your own picture.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowLeds('011110101101111111110111101111011110', '#facc15', num(100))))
+  },
+  {
+    id: 'matrix-heart',
+    name: 'LED Matrix: Heart',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows the built-in heart icon in red.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowPattern('HEART', '#ff0055')))
+  },
+  {
+    id: 'matrix-pattern-slideshow',
+    name: 'LED Matrix: Icon Slideshow',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Cycles through several of the built-in matrix icons, pausing on each one.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixShowPattern('HEART', '#ff0055'), delay(1000),
+        ledMatrixShowPattern('SMILEY', '#ffcc00'), delay(1000),
+        ledMatrixShowPattern('STAR', '#00ffff'), delay(1000),
+        ledMatrixShowPattern('CHECK', '#00ff00'), delay(1000),
+        ledMatrixShowPattern('ARROW_UP', '#ff8800'), delay(1000)
+      )
+    )
+  },
+  {
+    id: 'matrix-spinner',
+    name: 'LED Matrix: Spinner Animation',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays the built-in spinner animation — a single pixel chasing around the border.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowAnimation('SPINNER', '#00ffff')))
+  },
+  {
+    id: 'matrix-pulse-heart',
+    name: 'LED Matrix: Pulsing Heart',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays the built-in pulsing-heart animation — brightness fades up and down like a heartbeat.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowAnimation('PULSE_HEART', '#ff0055')))
+  },
+  {
+    id: 'matrix-blink-alert',
+    name: 'LED Matrix: Blink Alert',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Flashes the whole matrix a few times — handy as a visual alarm.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(ledMatrixShowAnimation('BLINK_ALL', '#ff0000'), delay(500)))
+  },
+  {
+    id: 'matrix-rotate-demo',
+    name: 'LED Matrix: Rotate Demo',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Draws the same up-arrow icon four times, rotating the matrix 90° each time, so the arrow visibly spins to point in every direction.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixRotate('0'), ledMatrixShowPattern('ARROW_UP', '#00ffff'), delay(1000),
+        ledMatrixRotate('90'), ledMatrixShowPattern('ARROW_UP', '#00ffff'), delay(1000),
+        ledMatrixRotate('180'), ledMatrixShowPattern('ARROW_UP', '#00ffff'), delay(1000),
+        ledMatrixRotate('270'), ledMatrixShowPattern('ARROW_UP', '#00ffff'), delay(1000)
+      )
+    )
+  },
+  {
+    id: 'matrix-countdown',
+    name: 'LED Matrix: Countdown Timer',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Counts down 5-4-3-2-1 on the matrix, one digit per second, then flashes a checkmark.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixShowChar(str('5'), '#ffffff', num(80)), delay(1000),
+        ledMatrixShowChar(str('4'), '#ffffff', num(80)), delay(1000),
+        ledMatrixShowChar(str('3'), '#ffff00', num(80)), delay(1000),
+        ledMatrixShowChar(str('2'), '#ff8800', num(80)), delay(1000),
+        ledMatrixShowChar(str('1'), '#ff0000', num(80)), delay(1000),
+        ledMatrixShowPattern('CHECK', '#00ff00'), delay(1500)
+      )
+    )
+  },
+  {
+    id: 'matrix-button-color-picker',
+    name: 'LED Matrix: Button Color Picker',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Each of the 4 onboard buttons fills the matrix with a different color — a quick way to try out the LED Matrix Fill block.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          buttonPressed('32'), ledMatrixFill('#ff0000'),
+          ifElse(
+            buttonPressed('33'), ledMatrixFill('#00ff00'),
+            ifElse(
+              buttonPressed('14'), ledMatrixFill('#0000ff'),
+              ifElse(buttonPressed('13'), ledMatrixFill('#ffff00'), ledMatrixClear())
+            )
+          )
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'matrix-score-counter',
+    name: 'LED Matrix: Score Counter',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Button 1 (SW1) adds a point, shown as a single digit 0-9 on the matrix; button 2 (SW2) resets it back to 0.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      { type: 'variables_set', fields: { VAR: V('score') }, inputs: { VALUE: { block: num(0) } } },
+      stack(
+        ifElse(buttonPressed('32'), stack(varChange('score', num(1)), delay(250))),
+        ifElse(buttonPressed('33'), stack(varSet('score', num(0)), delay(250))),
+        ifElse(
+          compare('GT', varGet('score'), num(9)),
+          varSet('score', num(0))
+        ),
+        ledMatrixShowChar(varGet('score'), '#00ffff', num(90))
+      ),
+      [{ id: 'score', name: 'score' }]
+    )
+  },
+  {
+    id: 'matrix-brightness-fade',
+    name: 'LED Matrix: Brightness Fade',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Fills the matrix blue and sweeps the brightness from dim to full and back, showing off the Set Brightness block.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixFill('#0066ff'),
+        ledMatrixSetBrightness(num(10)), delay(150),
+        ledMatrixSetBrightness(num(60)), delay(150),
+        ledMatrixSetBrightness(num(120)), delay(150),
+        ledMatrixSetBrightness(num(200)), delay(150),
+        ledMatrixSetBrightness(num(255)), delay(300),
+        ledMatrixSetBrightness(num(120)), delay(150),
+        ledMatrixSetBrightness(num(30)), delay(300)
+      )
+    )
+  },
+  {
+    id: 'matrix-random-twinkle',
+    name: 'LED Matrix: Random Twinkle',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Lights up a random pixel in a random-ish color spot every loop, building up a twinkling starfield. Clears occasionally so it does not just fill solid.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixSetPixel(mathRandom(num(0), num(5)), mathRandom(num(0), num(5)), 'ON', '#66ccff'),
+        delay(150)
+      )
+    )
+  },
+  {
+    id: 'matrix-rainbow-fill-cycle',
+    name: 'LED Matrix: Rainbow Fill Cycle',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Fills the whole matrix with one solid color at a time, cycling through the rainbow.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixFill('#ff0000'), delay(400),
+        ledMatrixFill('#ff8800'), delay(400),
+        ledMatrixFill('#ffff00'), delay(400),
+        ledMatrixFill('#00ff00'), delay(400),
+        ledMatrixFill('#00ffff'), delay(400),
+        ledMatrixFill('#0000ff'), delay(400),
+        ledMatrixFill('#ff00ff'), delay(400)
+      )
+    )
+  },
+
+  // ── AI Junior: Buzzer melody showcase ──────────────────────────────────────
+  {
+    id: 'buzzer-mario',
+    name: 'Buzzer: Play Mario Theme',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays the classic Super Mario Bros. theme opening on the onboard buzzer.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'MARIO', num(0)), delay(500)))
+  },
+  {
+    id: 'buzzer-happy-birthday',
+    name: 'Buzzer: Play Happy Birthday',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays "Happy Birthday" on the onboard buzzer — good for a birthday-reminder gadget.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'HAPPY_BIRTHDAY', num(0)), delay(500)))
+  },
+  {
+    id: 'buzzer-twinkle',
+    name: 'Buzzer: Play Twinkle Twinkle',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays "Twinkle Twinkle Little Star" on the onboard buzzer.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'TWINKLE', num(0)), delay(500)))
+  },
+  {
+    id: 'buzzer-jingle-bells',
+    name: 'Buzzer: Play Jingle Bells',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays "Jingle Bells" on the onboard buzzer.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'JINGLE_BELLS', num(0)), delay(500)))
+  },
+  {
+    id: 'buzzer-alarm-siren',
+    name: 'Buzzer: Alarm Siren',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Alternates between two frequencies to make a simple wailing siren sound, using the Play Tone block directly.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(buzzerPlayToneDuration('buzzer1', num(600), num(300)), buzzerPlayToneDuration('buzzer1', num(1000), num(300)))
+    )
+  },
+  {
+    id: 'buzzer-om-chant',
+    name: 'Buzzer: Om Chant Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A long, low, sustained tone for a peaceful "Om" feel. A piezo buzzer can\'t chant, so this is a simple drone tone, not a recording of the real chant.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'OM', num(0)), delay(2000)))
+  },
+  {
+    id: 'buzzer-aarti-bell',
+    name: 'Buzzer: Aarti Bell Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A bright, quick ringing pattern like a temple bell (ghanti) for an aarti-style notification tone.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'AARTI_BELL', num(0)), delay(1000)))
+  },
+  {
+    id: 'buzzer-gayatri-mantra-tone',
+    name: 'Buzzer: Gayatri Mantra Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A gentle devotional bell tone inspired by the Gayatri Mantra\'s name — a simple melody for a piezo buzzer, not a transcription of the actual chanted mantra.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'GAYATRI_MANTRA', num(0)), delay(1500)))
+  },
+  {
+    id: 'buzzer-om-jai-jagdish-hare-tone',
+    name: 'Buzzer: Om Jai Jagdish Hare Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A simple bell-tone melody inspired by the well-known aarti "Om Jai Jagdish Hare" — a simplified buzzer tune, not the real sung aarti.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'OM_JAI_JAGDISH_HARE', num(0)), delay(1500)))
+  },
+  {
+    id: 'buzzer-hanuman-chalisa-tone',
+    name: 'Buzzer: Hanuman Chalisa Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A simple devotional bell tone inspired by the Hanuman Chalisa\'s name — a simplified buzzer tune, not a transcription of the actual chant.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'HANUMAN_CHALISA', num(0)), delay(1500)))
+  },
+  {
+    id: 'buzzer-mahamrityunjaya-tone',
+    name: 'Buzzer: Mahamrityunjaya Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A slow, calm devotional bell tone inspired by the Mahamrityunjaya Mantra\'s name — a simplified buzzer tune, not a transcription of the actual chant.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'MAHAMRITYUNJAYA', num(0)), delay(2000)))
+  },
+  {
+    id: 'buzzer-ganesh-vandana-tone',
+    name: 'Buzzer: Ganesh Vandana Tone',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A short devotional bell tone inspired by a Ganesh Vandana invocation — a simplified buzzer tune, not a transcription of the actual chant.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(null, stack(buzzerPlayMelody('buzzer1', 'GANESH_VANDANA', num(0)), delay(1500)))
+  },
+  {
+    id: 'buzzer-devotional-medley',
+    name: 'Buzzer: Devotional Bell Medley',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays through several of the devotional bell tones back to back — Om, Aarti Bell, then Gayatri — with a short pause between each.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        buzzerPlayMelody('buzzer1', 'OM', num(0)), delay(800),
+        buzzerPlayMelody('buzzer1', 'AARTI_BELL', num(0)), delay(800),
+        buzzerPlayMelody('buzzer1', 'GAYATRI_MANTRA', num(0)), delay(2000)
+      )
+    )
+  },
+
+  // ── AI Junior: mini projects (combining matrix, buzzer, motors, buttons, headers) ──
+  {
+    id: 'ai-junior-piano',
+    name: 'AI Junior: 4-Button Piano',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Each of the 4 onboard buttons plays a different musical note — a tiny piano using the Play Tone block.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(buttonPressed('32'), buzzerPlayToneDuration('buzzer1', num(262), num(200))),
+        ifElse(buttonPressed('33'), buzzerPlayToneDuration('buzzer1', num(330), num(200))),
+        ifElse(buttonPressed('14'), buzzerPlayToneDuration('buzzer1', num(392), num(200))),
+        ifElse(buttonPressed('13'), buzzerPlayToneDuration('buzzer1', num(523), num(200)))
+      )
+    )
+  },
+  {
+    id: 'ai-junior-doorbell',
+    name: 'AI Junior: Smart Doorbell',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Pressing SW1 rings an aarti-bell-style tone and flashes a heart on the matrix — a friendly doorbell.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          buttonPressed('32'),
+          stack(ledMatrixShowPattern('HEART', '#ff0055'), buzzerPlayMelody('buzzer1', 'AARTI_BELL', num(0)), delay(600), ledMatrixClear())
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-ultrasonic-alert',
+    name: 'AI Junior: Ultrasonic Proximity Alert',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Reads the ultrasonic sensor on the dedicated header (TX=GPIO16, RX=GPIO4) and shows a warning icon plus a beep when something gets within 20cm.',
+    devices: aiJuniorDevices(device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        serialPrint(readUltrasonic('us1')),
+        ifElse(
+          compare('LT', readUltrasonic('us1'), num(20)),
+          stack(ledMatrixShowPattern('CROSS', '#ff0000'), buzzerPlayToneDuration('buzzer1', num(1500), num(150))),
+          ledMatrixClear()
+        ),
+        delay(200)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-security-alarm',
+    name: 'AI Junior: Security Alarm',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Sounds a siren and flashes the matrix red whenever the ultrasonic sensor detects something closer than 15cm — a simple motion-ish alarm.',
+    devices: aiJuniorDevices(device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          compare('LT', readUltrasonic('us1'), num(15)),
+          stack(ledMatrixShowAnimation('BLINK_ALL', '#ff0000'), buzzerPlayToneDuration('buzzer1', num(1800), num(200))),
+          delay(200)
+        )
+      )
+    )
+  },
+  {
+    id: 'ai-junior-oled-hello',
+    name: 'AI Junior: OLED Hello World',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Prints a greeting on an OLED screen plugged into the dedicated header (SDA=GPIO21, SCL=GPIO22).',
+    devices: aiJuniorDevices(device('oled1', 'oled', { sda: 'GPIO21', scl: 'GPIO22' }, 60, 250)),
+    blocklyWorkspaceJson: program(
+      stack(oledInit('oled1'), oledTextSize('oled1', 1)),
+      stack(oledClear('oled1'), oledPrint('oled1', str('Hello, AI Junior!')), delay(1000))
+    )
+  },
+  {
+    id: 'ai-junior-oled-ultrasonic-distance',
+    name: 'AI Junior: OLED Distance Display',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows the live ultrasonic distance reading on the OLED screen, updating every half second.',
+    devices: aiJuniorDevices(
+      device('oled1', 'oled', { sda: 'GPIO21', scl: 'GPIO22' }, 60, 250),
+      device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)
+    ),
+    blocklyWorkspaceJson: program(
+      stack(oledInit('oled1'), oledTextSize('oled1', 2)),
+      stack(oledClear('oled1'), oledPrint('oled1', readUltrasonic('us1')), delay(500))
+    )
+  },
+  {
+    id: 'ai-junior-motors-forward-back',
+    name: 'AI Junior: Drive Forward / Backward',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'SW1 drives both onboard motors forward, SW2 drives them backward, otherwise they stop.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          buttonPressed('32'),
+          stack(dcmotorSet('motor1', 'FWD', num(200)), dcmotorSet('motor2', 'FWD', num(200))),
+          ifElse(
+            buttonPressed('33'),
+            stack(dcmotorSet('motor1', 'REV', num(200)), dcmotorSet('motor2', 'REV', num(200))),
+            stack(dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0)))
+          )
+        )
+      )
+    )
+  },
+  {
+    id: 'ai-junior-obstacle-avoider',
+    name: 'AI Junior: Obstacle Avoider Robot',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Drives forward until the ultrasonic sensor sees something closer than 20cm, then stops, beeps, and reverses briefly.',
+    devices: aiJuniorDevices(device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          compare('LT', readUltrasonic('us1'), num(20)),
+          stack(
+            dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0)),
+            buzzerPlayToneDuration('buzzer1', num(1200), num(150)),
+            dcmotorSet('motor1', 'REV', num(180)), dcmotorSet('motor2', 'REV', num(180)),
+            delay(400),
+            dcmotorSet('motor1', 'STOP', num(0)), dcmotorSet('motor2', 'STOP', num(0))
+          ),
+          stack(dcmotorSet('motor1', 'FWD', num(180)), dcmotorSet('motor2', 'FWD', num(180)))
+        ),
+        delay(100)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-note-sequencer',
+    name: 'AI Junior: 4-Note Sequencer',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Press SW1 to step through a 4-note sequence one note at a time, shown as a number on the matrix and played on the buzzer.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      { type: 'variables_set', fields: { VAR: V('step') }, inputs: { VALUE: { block: num(0) } } },
+      stack(
+        ifElse(
+          buttonPressed('32'),
+          stack(
+            varChange('step', num(1)),
+            ifElse(compare('GT', varGet('step'), num(3)), varSet('step', num(0))),
+            ledMatrixShowChar(varGet('step'), '#00ffff', num(100)),
+            ifElse(
+              compare('EQ', varGet('step'), num(0)), buzzerPlayToneDuration('buzzer1', num(262), num(200)),
+              ifElse(
+                compare('EQ', varGet('step'), num(1)), buzzerPlayToneDuration('buzzer1', num(330), num(200)),
+                ifElse(
+                  compare('EQ', varGet('step'), num(2)), buzzerPlayToneDuration('buzzer1', num(392), num(200)),
+                  buzzerPlayToneDuration('buzzer1', num(523), num(200))
+                )
+              )
+            ),
+            delay(250)
+          )
+        )
+      ),
+      [{ id: 'step', name: 'step' }]
+    )
+  },
+  {
+    id: 'ai-junior-morning-alarm',
+    name: 'AI Junior: Peaceful Morning Alarm',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A gentle wake-up routine: shows a pulsing heart on the matrix while playing the Om chant tone.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ledMatrixShowAnimation('PULSE_HEART', '#ff8800'), buzzerPlayMelody('buzzer1', 'OM', num(0)))
+    )
+  },
+  {
+    id: 'ai-junior-light-show',
+    name: 'AI Junior: Button Light & Sound Show',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Press SW1 to trigger a spinner animation on the matrix together with the Mario tune — a simple combined light-and-sound effect.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ifElse(buttonPressed('32'), stack(ledMatrixShowAnimation('SPINNER', '#ff00ff'), buzzerPlayMelody('buzzer1', 'MARIO', num(0)))), delay(100))
+    )
+  },
+
+  // ── AI Junior: sensor-driven combos on the open jacks & ultrasonic header ──
+  {
+    id: 'ai-junior-potentiometer-matrix-mood',
+    name: 'AI Junior: Potentiometer Sets Matrix Color',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Turn the potentiometer (plugged into sensor jack J4/GPIO34) past halfway to turn the matrix green; otherwise it stays red.',
+    devices: aiJuniorDevices(device('potentiometer1', 'potentiometer', 'GPIO34', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        serialPrint(readPot('34')),
+        ifElse(compare('GT', readPot('34'), num(2048)), ledMatrixFill('#00ff00'), ledMatrixFill('#ff0000')),
+        delay(200)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-potentiometer-buzzer-pitch',
+    name: 'AI Junior: Potentiometer Controls Buzzer Pitch',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Turning the potentiometer (J4/GPIO34) smoothly changes the buzzer\'s tone frequency.',
+    devices: aiJuniorDevices(device('potentiometer1', 'potentiometer', 'GPIO34', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(buzzerTone('12', mathArith('ADD', num(200), readPot('34'))), delay(50))
+    )
+  },
+  {
+    id: 'ai-junior-ldr-matrix-nightlight',
+    name: 'AI Junior: LDR Matrix Night Light',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'When the LDR (sensor jack J5/GPIO35) detects darkness, the matrix fills warm white like a little night light.',
+    devices: aiJuniorDevices(device('ldr1', 'ldr', 'GPIO35', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(serialPrint(readLdr('35')), ifElse(isDark('35', 1000), ledMatrixFill('#fff2cc'), ledMatrixClear()), delay(300))
+    )
+  },
+  {
+    id: 'ai-junior-ldr-buzzer-alert',
+    name: 'AI Junior: LDR Darkness Beep',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Beeps once when the LDR (J5/GPIO35) senses it just got dark.',
+    devices: aiJuniorDevices(device('ldr1', 'ldr', 'GPIO35', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ifElse(isDark('35', 1000), buzzerPlayToneDuration('buzzer1', num(1000), num(150))), delay(400))
+    )
+  },
+  {
+    id: 'ai-junior-ir-matrix-cross',
+    name: 'AI Junior: IR Sensor Shows Cross',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows a cross icon on the matrix whenever the IR sensor (open jack J3/GPIO39) detects an obstacle.',
+    devices: aiJuniorDevices(device('ir1', 'ir', 'GPIO39', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ifElse(irDetected('39'), ledMatrixShowPattern('CROSS', '#ff0000'), ledMatrixClear()), delay(150))
+    )
+  },
+  {
+    id: 'ai-junior-ir-buzzer-beep',
+    name: 'AI Junior: IR Sensor Beep',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Beeps whenever the IR sensor (J3/GPIO39) detects an obstacle in front of it.',
+    devices: aiJuniorDevices(device('ir1', 'ir', 'GPIO39', 600, 200)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ifElse(irDetected('39'), buzzerPlayToneDuration('buzzer1', num(800), num(120))), delay(150))
+    )
+  },
+  {
+    id: 'ai-junior-ultrasonic-matrix-bar',
+    name: 'AI Junior: Ultrasonic Distance on Matrix',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows a heart when something is close, a check icon when it is far, using the ultrasonic sensor on its dedicated header.',
+    devices: aiJuniorDevices(device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        serialPrint(readUltrasonic('us1')),
+        ifElse(compare('LT', readUltrasonic('us1'), num(15)), ledMatrixShowPattern('HEART', '#ff0055'), ledMatrixShowPattern('CHECK', '#00ff00')),
+        delay(200)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-ultrasonic-buzzer-tone',
+    name: 'AI Junior: Ultrasonic Controls Buzzer Pitch',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'A theremin-style effect — the closer an object is to the ultrasonic sensor, the higher the buzzer\'s pitch.',
+    devices: aiJuniorDevices(device('us1', 'ultrasonic', { trig: 'GPIO16', echo: 'GPIO4' }, 600, 60)),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(buzzerTone('12', mathArith('MULTIPLY', mathArith('MINUS', num(100), readUltrasonic('us1')), num(20))), delay(50))
+    )
+  },
+  {
+    id: 'matrix-diamond-pulse',
+    name: 'LED Matrix: Pulsing Diamond',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows the built-in diamond icon and sweeps the brightness up and down for a gentle pulsing effect.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ledMatrixShowPattern('DIAMOND', '#00ffff'),
+        ledMatrixSetBrightness(num(20)), delay(200),
+        ledMatrixSetBrightness(num(150)), delay(200),
+        ledMatrixSetBrightness(num(255)), delay(400),
+        ledMatrixSetBrightness(num(150)), delay(200),
+        ledMatrixSetBrightness(num(20)), delay(400)
+      )
+    )
+  },
+  {
+    id: 'buzzer-tone-scale',
+    name: 'Buzzer: Musical Scale',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Plays a simple rising musical scale (C D E F G A B C) on the buzzer using the Play Tone block.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        buzzerPlayToneDuration('buzzer1', num(262), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(294), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(330), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(349), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(392), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(440), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(494), num(200)),
+        buzzerPlayToneDuration('buzzer1', num(523), num(400)),
+        delay(800)
+      )
+    )
+  },
+  {
+    id: 'ai-junior-good-morning',
+    name: 'AI Junior: Good Morning Greeting',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'Shows "HI" scrolling on the matrix and plays a cheerful little tune — a simple good-morning greeting routine.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(ledMatrixShowText(str('GOOD MORNING'), '#ffcc00', num(90), num(70)), buzzerPlayMelody('buzzer1', 'TWINKLE', num(0)))
+    )
+  },
+  {
+    id: 'ai-junior-square-toggle',
+    name: 'AI Junior: Square/Diamond Toggle',
+    category: 'AI Junior',
+    board: 'ai-junior',
+    description: 'SW3 shows a square on the matrix, SW4 shows a diamond — a simple two-button icon toggle to experiment with.',
+    devices: aiJuniorDevices(),
+    blocklyWorkspaceJson: program(
+      null,
+      stack(
+        ifElse(
+          buttonPressed('14'), ledMatrixShowPattern('SQUARE', '#00ff88'),
+          ifElse(buttonPressed('13'), ledMatrixShowPattern('DIAMOND', '#ff8800'))
+        ),
+        delay(150)
+      )
+    )
   }
 ]
 
@@ -1494,6 +2325,7 @@ export function getExampleMenuTree(): Array<{ category: string; items: Array<{ i
     'Sensors',
     'Motors & Outputs',
     'Displays',
+    'AI Junior',
     'Mini Projects',
     'Programming Concepts',
     'Bluetooth',

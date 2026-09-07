@@ -1,0 +1,44 @@
+{
+  "pins": {
+    "GPIO39": { "name": "GPIO39", "label": "Sensor J3 (any digital/analog)", "inputOnly": true, "interfaces": ["DIGITAL_IN", "ANALOG_IN"] },
+    "GPIO34": { "name": "GPIO34", "label": "Sensor J4 (any digital/analog)", "inputOnly": true, "interfaces": ["DIGITAL_IN", "ANALOG_IN"] },
+    "GPIO35": { "name": "GPIO35", "label": "Sensor J5 (any digital/analog)", "inputOnly": true, "interfaces": ["DIGITAL_IN", "ANALOG_IN"] },
+
+    "GPIO15": { "name": "GPIO15", "label": "LED_DATA (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] },
+
+    "GPIO25": { "name": "GPIO25", "label": "MIC SD (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+    "GPIO26": { "name": "GPIO26", "label": "MIC WS (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] },
+    "GPIO27": { "name": "GPIO27", "label": "MIC SCK (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] },
+
+    "GPIO32": { "name": "GPIO32", "label": "SW1 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+    "GPIO33": { "name": "GPIO33", "label": "SW2 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+    "GPIO14": { "name": "GPIO14", "label": "SW3 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+    "GPIO13": { "name": "GPIO13", "label": "SW4 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+
+    "GPIO12": { "name": "GPIO12", "label": "Buzzer (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT", "PWM"] },
+
+    "GPIO18": { "name": "GPIO18", "label": "M1 IN1 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT", "PWM"] },
+    "GPIO19": { "name": "GPIO19", "label": "M1 IN2 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT", "PWM"] },
+    "GPIO5":  { "name": "GPIO5",  "label": "M2 IN1 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT", "PWM"] },
+    "GPIO17": { "name": "GPIO17", "label": "M2 IN2 (fixed)", "inputOnly": false, "interfaces": ["DIGITAL_OUT", "PWM"] },
+
+    "GPIO16": { "name": "GPIO16", "label": "Ultrasonic TX/TRIG header", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] },
+    "GPIO4":  { "name": "GPIO4",  "label": "Ultrasonic RX/ECHO header", "inputOnly": false, "interfaces": ["DIGITAL_IN"] },
+
+    "GPIO22": { "name": "GPIO22", "label": "OLED SCL header", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] },
+    "GPIO21": { "name": "GPIO21", "label": "OLED SDA header", "inputOnly": false, "interfaces": ["DIGITAL_OUT"] }
+  },
+  "peripherals": {
+    "led_matrix":  { "type": "output", "preferredPin": "GPIO15", "compat": ["DIGITAL_OUT"] },
+    "onboard_mic": { "type": "input",  "preferredPin": { "sd": "GPIO25", "ws": "GPIO26", "sck": "GPIO27" }, "compat": ["DIGITAL_IN", "DIGITAL_OUT"] },
+    "button":      { "type": "input",  "preferredPin": "GPIO32", "compat": ["DIGITAL_IN"] },
+    "buzzer":      { "type": "output", "preferredPin": "GPIO12", "compat": ["DIGITAL_OUT"] },
+    "dcmotor":     { "type": "motor",  "preferredPin": { "in1": "GPIO18", "in2": "GPIO19" }, "compat": ["DIGITAL_OUT"] },
+    "dcmotor_2":   { "type": "motor",  "preferredPin": { "in1": "GPIO5", "in2": "GPIO17" }, "compat": ["DIGITAL_OUT"] },
+    "ultrasonic":  { "type": "input",  "preferredPin": { "trig": "GPIO16", "echo": "GPIO4" }, "compat": ["DIGITAL_OUT", "DIGITAL_IN"] },
+    "oled":        { "type": "output", "preferredPin": { "sda": "GPIO21", "scl": "GPIO22" }, "compat": ["DIGITAL_OUT"] },
+    "potentiometer": { "type": "input", "preferredPin": "GPIO39", "compat": ["ANALOG_IN"] },
+    "ldr":           { "type": "input", "preferredPin": "GPIO34", "compat": ["ANALOG_IN"] },
+    "ir_analog":     { "type": "input", "preferredPin": "GPIO35", "compat": ["ANALOG_IN"] }
+  }
+}

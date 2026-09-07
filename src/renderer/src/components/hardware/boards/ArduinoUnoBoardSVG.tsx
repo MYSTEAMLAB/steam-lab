@@ -1,5 +1,6 @@
 import React from 'react'
 import type { BoardConfig } from '@shared/types/board'
+import logoUrl from '../../../assets/logo.jpeg'
 
 interface ArduinoUnoBoardSVGProps {
   boardConfig: BoardConfig
@@ -64,6 +65,10 @@ export const ArduinoUnoBoardSVG: React.FC<ArduinoUnoBoardSVGProps> = ({ boardCon
       <circle cx="480" cy="200" r="6" fill="#ef4444" opacity="0.8" />
       <text x="500" y="185" fontSize="12" fill="#f0f9ff">TX</text>
       <text x="500" y="205" fontSize="12" fill="#f0f9ff">RX</text>
+
+      {/* MY STEAM LAB logo sticker */}
+      <rect x="70" y="255" width="80" height="80" rx="10" fill="#ffffff" stroke="#0369a1" strokeWidth="1.5" />
+      <image href={logoUrl} x="75" y="260" width="70" height="70" />
     </svg>
   )
 }

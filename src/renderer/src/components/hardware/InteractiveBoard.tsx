@@ -1,27 +1,52 @@
 import React from 'react'
 import { ESP32BoardSVG } from './boards/ESP32BoardSVG'
 import { ArduinoUnoBoardSVG } from './boards/ArduinoUnoBoardSVG'
+import { AIJuniorBoardSVG } from './boards/AIJuniorBoardSVG'
 import type { BoardConfig, PinCoordinate } from '@shared/types/board'
 
 interface InteractiveBoardProps {
   boardConfig: BoardConfig | null
   onPinClick: (pinName: string, coordinate: PinCoordinate) => void
   activeWireSource: string | null
+  /** Starts a board-drag when the user grabs the PCB itself (not a pin or a
+   *  placed component). Omit to render the board fixed in place. */
+  onBoardPointerDown?: (e: React.PointerEvent) => void
 }
 
-export const InteractiveBoard: React.FC<InteractiveBoardProps> = ({ 
+export const InteractiveBoard: React.FC<InteractiveBoardProps> = ({
   boardConfig,
   onPinClick,
-  activeWireSource
+  activeWireSource,
+  onBoardPointerDown
 }) => {
   if (!boardConfig) return null
 
   const isEsp32 = boardConfig.id === 'esp32'
-  
+  const isAiJunior = boardConfig.id === 'ai-junior'
+
   return (
     <g className="board-group" transform="translate(0, 0)">
+      {/* 0. Drag handle — a transparent hit-area the exact size of the board.
+          Sits underneath the board art (which is pointer-events-none) and
+          below the pin hitboxes (rendered after, so on top), so grabbing the
+          PCB body moves it while pins/components remain independently
+          clickable. */}
+      {onBoardPointerDown && (
+        <rect
+          x="0"
+          y="0"
+          width={boardConfig.dimensions.width}
+          height={boardConfig.dimensions.height}
+          fill="transparent"
+          className="cursor-grab active:cursor-grabbing"
+          onPointerDown={onBoardPointerDown}
+        />
+      )}
+
       {/* 1. Render the static Board SVG Background */}
-      {isEsp32 ? (
+      {isAiJunior ? (
+        <AIJuniorBoardSVG boardConfig={boardConfig} />
+      ) : isEsp32 ? (
         <ESP32BoardSVG boardConfig={boardConfig} />
       ) : (
         <ArduinoUnoBoardSVG boardConfig={boardConfig} />

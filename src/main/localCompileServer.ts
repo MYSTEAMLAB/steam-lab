@@ -59,6 +59,20 @@ function readJsonBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
+// Stable across requests (NOT one fresh random dir per compile) — arduino-cli
+// reuses its build-path as an incremental cache (skips recompiling unchanged
+// core/library object files) as long as the path stays the same, and the
+// previous per-request-random-dir-then-delete-it-all approach silently threw
+// that away, forcing a full from-scratch ESP32 core rebuild on *every single*
+// compile. That was the real reason compiles were slow (and, combined with
+// clients' fetch timeouts being shorter than a full rebuild, why they'd
+// sometimes fail outright with a socket/timeout error mid-compile).
+// Requests are already serialized via enqueue() below, so a shared path is
+// safe — there's never two arduino-cli invocations touching it at once.
+const LAN_BUILD_ROOT = path.join(app.getPath('temp'), 'edublocks_lan_build');
+const LAN_SKETCH_DIR = path.join(LAN_BUILD_ROOT, 'sketch');
+const LAN_BUILD_DIR = path.join(LAN_BUILD_ROOT, 'build');
+
 function compileOne(
   code: string,
   rawFqbn: string,
@@ -66,26 +80,23 @@ function compileOne(
 ): Promise<{ success: boolean; log: string; binBase64?: string }> {
   const fqbn = withBluetoothPartition(rawFqbn, code);
   return new Promise((resolve) => {
-    const reqId = crypto.randomBytes(6).toString('hex');
-    const buildRoot = path.join(app.getPath('temp'), 'edublocks_lan_build', reqId);
-    const sketchDir = path.join(buildRoot, 'sketch');
-    const buildDir = path.join(buildRoot, 'build');
-
     try {
-      fs.mkdirSync(sketchDir, { recursive: true });
-      fs.mkdirSync(buildDir, { recursive: true });
-      fs.writeFileSync(path.join(sketchDir, 'sketch.ino'), code);
+      fs.mkdirSync(LAN_SKETCH_DIR, { recursive: true });
+      fs.mkdirSync(LAN_BUILD_DIR, { recursive: true });
+      // Force a fresh link against the new code, while leaving cached core/
+      // library .o files in place for arduino-cli to reuse.
+      fs.rmSync(path.join(LAN_BUILD_DIR, 'sketch.ino.bin'), { force: true });
+      fs.rmSync(path.join(LAN_BUILD_DIR, 'sketch.ino.elf'), { force: true });
+      fs.writeFileSync(path.join(LAN_SKETCH_DIR, 'sketch.ino'), code);
     } catch (e: any) {
       resolve({ success: false, log: e.message });
       return;
     }
 
-    const cleanup = () => fs.rm(buildRoot, { recursive: true, force: true }, () => {});
-
     onLog(`[Compiler] Compiling for ${fqbn}...`);
 
     ensureLibrariesInstalled(getRequiredLibraries(code), onLog, () => {
-      const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '--build-path', buildDir, sketchDir]);
+      const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', LAN_BUILD_DIR, LAN_SKETCH_DIR]);
       let fullLog = '';
 
       proc.stdout.on('data', (d) => {
@@ -103,17 +114,15 @@ function compileOne(
         if (exitCode !== 0) {
           onLog('==== COMPILATION FAILED ====');
           resolve({ success: false, log: fullLog });
-          cleanup();
           return;
         }
         try {
-          const bin = fs.readFileSync(path.join(buildDir, 'sketch.ino.bin'));
+          const bin = fs.readFileSync(path.join(LAN_BUILD_DIR, 'sketch.ino.bin'));
           onLog('==== COMPILATION SUCCESS ====');
           resolve({ success: true, log: fullLog, binBase64: bin.toString('base64') });
         } catch (e: any) {
           resolve({ success: false, log: `${fullLog}\n${e.message}` });
         }
-        cleanup();
       });
     });
   });
@@ -182,6 +191,18 @@ export function startLocalCompileServer(): { port: number; pin: string; lanIp: s
     res.writeHead(404);
     res.end();
   });
+
+  // Node's http.Server enforces a 5-minute requestTimeout and a 60s
+  // headersTimeout by default (Node 14+) — fine for typical APIs, but an
+  // ESP32 compile (especially a first-time library install, or just this
+  // machine under load) can legitimately run past either, and Node kills
+  // the connection outright when they fire: the client sees a bare "socket
+  // closed"/"headers timeout" with no response at all, indistinguishable
+  // from a real crash. This is a local, PIN-gated dev server (never
+  // internet-facing), so there's no slow-loris concern in disabling them.
+  server.requestTimeout = 0;
+  server.headersTimeout = 0;
+  server.timeout = 0;
 
   server.listen(PORT, '0.0.0.0');
   return { port: PORT, pin: currentPin, lanIp: getLanIp() };

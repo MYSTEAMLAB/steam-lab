@@ -2,8 +2,23 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { BoardSummary } from '@shared/types/board'
 import type { PlacedDevice, WireConnection } from '@shared/types/project'
-import { validatePinAssignment, findAvailablePin } from '@shared/boards/wiringEngine'
+import { validatePinAssignment, validateMultiPinAssignment, findAvailablePin } from '@shared/boards/wiringEngine'
+import { AI_JUNIOR_FIXED_DEVICES } from '@shared/boards/ai-junior/fixedDevices'
 import type { LanguageCode } from '@renderer/lib/i18n/translations'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Junior's fixed onboard hardware — see setBoard(): seeded onto the canvas
+// automatically, not offered as optional palette items. Pins match the
+// Navneet ESP32 MIC RGB 6x6 Matrix schematic exactly (ai-junior/pinmap.json).
+// ─────────────────────────────────────────────────────────────────────────────
+const AI_JUNIOR_FIXED_DEVICE_IDS = new Set(AI_JUNIOR_FIXED_DEVICES.map(d => d.id))
+
+/** True for AI Junior's onboard-soldered parts — these can't be moved, rewired,
+ *  or deleted from the canvas since they're physically fixed to the real PCB,
+ *  unlike a normal drag-and-dropped component. */
+export function isFixedBoardDevice(boardId: string, deviceId: string): boolean {
+  return boardId === 'ai-junior' && AI_JUNIOR_FIXED_DEVICE_IDS.has(deviceId)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State Shape
@@ -14,10 +29,14 @@ export interface AppState {
   availableBoards: BoardSummary[]
   /** The currently selected board */
   selectedBoard: BoardSummary | null
+  /** Which of MY STEAM LAB's own PCB kits this project targets — cosmetic/
+   *  informational only for now (doesn't affect pinmap or codegen), same
+   *  ESP32 board underneath either way. */
+  pcbType: 'AI_SENIOR' | 'AI_JUNIOR'
 
   // ── UI State ──────────────────────────────────────────────────────────────
   /** Active center panel tab */
-  activeTab: 'blocks' | 'hardware' | 'ai' | 'simulator'
+  activeTab: 'blocks' | 'hardware' | 'ai' | 'simulator' | 'tracer'
   /** Active right panel tab */
   activeRightTab: 'code' | 'connections' | 'monitor'
   /** App chrome language — persisted across sessions. */
@@ -85,9 +104,10 @@ export interface AppActions {
   // Board actions
   setAvailableBoards: (boards: BoardSummary[]) => void
   setBoard: (boardId: string) => void
-  
+  setPcbType: (type: 'AI_SENIOR' | 'AI_JUNIOR') => void
+
   // UI Actions
-  setActiveTab: (tab: 'blocks' | 'hardware' | 'ai') => void
+  setActiveTab: (tab: 'blocks' | 'hardware' | 'ai' | 'simulator' | 'tracer') => void
   setActiveRightTab: (tab: 'code' | 'connections' | 'monitor') => void
   setLanguage: (lang: LanguageCode) => void
 
@@ -140,6 +160,7 @@ export interface AppActions {
 const initialState: AppState = {
   availableBoards: [],
   selectedBoard: null,
+  pcbType: 'AI_SENIOR',
   activeTab: 'blocks',
   activeRightTab: 'code',
   language: 'en',
@@ -185,7 +206,20 @@ export const useAppStore = create<AppState & AppActions>()(
 
         set(state => {
           let newBoardLayouts = { ...state.boardLayouts }
-          
+
+          // AI Junior is fixed-hardware, not a breadboard-style flexible board —
+          // the LED matrix, mic, 2 motors, 4 buttons, and buzzer are physically
+          // pre-wired on the PCB (see AI_JUNIOR_FIXED_DEVICES), so they're seeded
+          // onto the canvas automatically the first time this board is picked,
+          // rather than waiting for the student to drag them in from a palette
+          // that would otherwise imply they're optional/movable.
+          if (boardId === 'ai-junior' && (!newBoardLayouts[boardId] || newBoardLayouts[boardId].devices.length === 0)) {
+            newBoardLayouts = {
+              ...newBoardLayouts,
+              [boardId]: { devices: AI_JUNIOR_FIXED_DEVICES.map(d => ({ ...d })), wires: [] }
+            }
+          }
+
           // If a layout exists for this new board, let's validate and remap invalid pins
           const layout = newBoardLayouts[boardId]
           if (layout && layout.devices.length > 0) {
@@ -195,8 +229,25 @@ export const useAppStore = create<AppState & AppActions>()(
             for (let i = 0; i < updatedDevices.length; i++) {
               const device = updatedDevices[i]
               const currentPin = typeof device.mappedPin === 'string' ? device.mappedPin : ''
-              
-              if (currentPin) {
+              const currentPinObj = (device.mappedPin && typeof device.mappedPin === 'object') ? device.mappedPin as Record<string, string> : null
+
+              if (currentPinObj) {
+                // Multi-pin device (motor, mic, OLED, etc.) — validate every
+                // named slot, not just "is it a non-empty string" like the
+                // single-pin branch below. Getting this wrong silently wipes
+                // and reassigns fresh pins for every multi-pin device on
+                // every board switch, even when its existing pins were
+                // already perfectly valid.
+                const { valid } = validateMultiPinAssignment(device.type, currentPinObj, boardId, seenPins)
+                if (!valid) {
+                  updatedDevices[i] = { ...device, mappedPin: '' }
+                  const newPin = findAvailablePin(device.type, boardId, updatedDevices)
+                  updatedDevices[i].mappedPin = newPin
+                  if (newPin) { if (typeof newPin === 'string') seenPins.add(newPin); else Object.values(newPin).forEach(p => seenPins.add(p)); }
+                } else {
+                  Object.values(currentPinObj).forEach(p => seenPins.add(p))
+                }
+              } else if (currentPin) {
                 const { valid } = validatePinAssignment(device.type, currentPin, boardId)
                 if (!valid || seenPins.has(currentPin)) {
                   // Temporarily remove this device's pin so we can find a free one among the others
@@ -231,6 +282,8 @@ export const useAppStore = create<AppState & AppActions>()(
         })
       },
 
+      setPcbType: (type) => set({ pcbType: type, isDirty: true }),
+
       // ── UI ──────────────────────────────────────────────────────────────
       setActiveTab: (tab) => set({ activeTab: tab }),
       setActiveRightTab: (tab) => set({ activeRightTab: tab }),
@@ -264,6 +317,7 @@ export const useAppStore = create<AppState & AppActions>()(
         set(state => {
           if (!state.selectedBoard) return state
           const boardId = state.selectedBoard.id
+          if (isFixedBoardDevice(boardId, deviceId)) return state
           const layout = state.boardLayouts[boardId]
           if (!layout) return state
           return {
@@ -279,6 +333,7 @@ export const useAppStore = create<AppState & AppActions>()(
         set(state => {
           if (!state.selectedBoard) return state
           const boardId = state.selectedBoard.id
+          if (isFixedBoardDevice(boardId, deviceId)) return state
           const layout = state.boardLayouts[boardId]
           if (!layout) return state
           return {
@@ -299,6 +354,7 @@ export const useAppStore = create<AppState & AppActions>()(
         set(state => {
           if (!state.selectedBoard) return state
           const boardId = state.selectedBoard.id
+          if (isFixedBoardDevice(boardId, deviceId)) return state
           const layout = state.boardLayouts[boardId]
           if (!layout) return state
           return {
@@ -328,10 +384,31 @@ export const useAppStore = create<AppState & AppActions>()(
           
           for (let i = 0; i < updatedDevices.length; i++) {
             const device = updatedDevices[i]
+
+            // Onboard-soldered AI Junior parts never get touched here — their
+            // pins are physically fixed on the real PCB, not something
+            // auto-wiring should ever "fix" or reassign.
+            if (isFixedBoardDevice(boardId, device.id)) {
+              const fixedPins = typeof device.mappedPin === 'string'
+                ? [device.mappedPin]
+                : Object.values(device.mappedPin || {})
+              fixedPins.forEach(p => { if (p) seenPins.add(p) })
+              continue
+            }
+
             const currentPin = typeof device.mappedPin === 'string' ? device.mappedPin : ''
-            
+            const currentPinObj = (device.mappedPin && typeof device.mappedPin === 'object') ? device.mappedPin as Record<string, string> : null
+
             let needsNewPin = false
-            if (!currentPin) {
+            if (currentPinObj) {
+              // Multi-pin device — see the identical fix + explanation in
+              // setBoard() above. Without this, every motor/mic/OLED/etc.
+              // gets its pins silently wiped and reassigned every single
+              // time the Hardware Canvas tab mounts, since this ran that
+              // check on every mount via the useEffect in HardwareCanvas.tsx.
+              const { valid } = validateMultiPinAssignment(device.type, currentPinObj, boardId, seenPins)
+              needsNewPin = !valid
+            } else if (!currentPin) {
               needsNewPin = true
             } else {
               const { valid } = validatePinAssignment(device.type, currentPin, boardId)
@@ -340,7 +417,9 @@ export const useAppStore = create<AppState & AppActions>()(
               }
             }
 
-            if (needsNewPin) {
+            if (currentPinObj && !needsNewPin) {
+              Object.values(currentPinObj).forEach(p => seenPins.add(p))
+            } else if (needsNewPin) {
               updatedDevices[i] = { ...device, mappedPin: '' } // Clear it temporarily
               const newPin = findAvailablePin(device.type, boardId, updatedDevices)
               updatedDevices[i].mappedPin = newPin
@@ -496,6 +575,7 @@ export const useAppStore = create<AppState & AppActions>()(
       partialize: (state) => ({
         language: state.language,
         selectedBoard: state.selectedBoard,
+        pcbType: state.pcbType,
         activeComPort: state.activeComPort,
         blocklyWorkspaceJson: state.blocklyWorkspaceJson,
         boardLayouts: state.boardLayouts,

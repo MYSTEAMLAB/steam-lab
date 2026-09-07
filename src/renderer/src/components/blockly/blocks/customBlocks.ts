@@ -1,5 +1,14 @@
 import * as Blockly from 'blockly/core'
+import { FieldColour, registerFieldColour } from '@blockly/field-colour'
+import { FieldPixelGrid } from '../fields/FieldPixelGrid'
 import { useAppStore } from '../../../store/useAppStore'
+
+// Blockly 12 split the colour picker field out of core into this official
+// plugin — registerFieldColour() wires it up under the "field_colour" name
+// that block JSON/serialization expects. Without this, `new FieldColour(...)`
+// still works directly (we hold the class reference), but any block loaded
+// from *JSON config* (not used here, but worth the one-line safety) would fail.
+registerFieldColour()
 import { boardRegistry } from '@shared/boards'
 import { COMPONENT_REQUIREMENTS } from '@shared/boards/wiringEngine'
 import { getTrainedClassNames } from '@renderer/lib/ai/imageClassifier'
@@ -765,6 +774,266 @@ export function registerCustomBlocks(): void {
     }
   }
 
+  // ── LED Matrix (6x6 WS2812, AI Junior's fixed onboard display) ────────────
+
+  Blockly.Blocks['led_matrix_set_pixel'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('turn')
+        .appendField(new Blockly.FieldDropdown([['ON', 'ON'], ['OFF', 'OFF']]), 'STATE')
+        .appendField('pixel')
+      this.appendValueInput('X').setCheck('Number').appendField('X (0-5)')
+      this.appendValueInput('Y').setCheck('Number').appendField('Y (0-5)')
+      this.appendDummyInput()
+        .appendField('Color')
+        .appendField(new FieldColour('#ff0000'), 'COLOR')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Turns a single pixel on the 6x6 LED matrix on or off, with a chosen color. X/Y run 0-5 from the top-left corner.')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_fill'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('fill entire matrix')
+        .appendField('Color')
+        .appendField(new FieldColour('#0000ff'), 'COLOR')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Sets every pixel on the LED matrix to the same color.')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_clear'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('Clear (all off)')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_set_brightness'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('Set Brightness')
+      this.appendValueInput('LEVEL').setCheck('Number').appendField('(0-255)')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Sets the overall brightness of the whole matrix, 0 (off) to 255 (max).')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_show_char'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('show character')
+      this.appendValueInput('CHAR').setCheck(null)
+      this.appendDummyInput()
+        .appendField('color')
+        .appendField(new FieldColour('#00ff00'), 'COLOR')
+        .appendField('brightness')
+      this.appendValueInput('BRIGHTNESS').setCheck('Number')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Displays a single character (letter, digit, or a few symbols) filling the whole 6x6 matrix. Only the first character of the text plugged in is used. Brightness is 0-255.')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_show_text'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('show scrolling text')
+      this.appendValueInput('TEXT').setCheck(null)
+      this.appendDummyInput()
+        .appendField('color')
+        .appendField(new FieldColour('#ffff00'), 'COLOR')
+        .appendField('brightness')
+      this.appendValueInput('BRIGHTNESS').setCheck('Number')
+      this.appendValueInput('SPEED').setCheck('Number').appendField('speed (ms/step)')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Scrolls text across the LED matrix, one column at a time. This block waits until the whole message has scrolled by before continuing — a lower ms/step scrolls faster. Brightness is 0-255.')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_show_leds'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('show LEDs')
+      this.appendDummyInput()
+        .appendField('Select color')
+        .appendField(new FieldColour('#facc15'), 'COLOR')
+      this.appendValueInput('BRIGHTNESS').setCheck('Number').appendField('brightness')
+      this.appendDummyInput('PIXELS_ROW')
+        .appendField(new FieldPixelGrid(), 'PIXELS')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Click cells to paint a custom picture on the 6x6 matrix — click a lit cell again to turn it off. Every lit cell uses the same "Select color".')
+    }
+  }
+
+  const LED_MATRIX_PATTERN_OPTIONS: [string, string][] = [
+    ['♥ Heart', 'HEART'],
+    ['🙂 Smiley', 'SMILEY'],
+    ['🙁 Sad', 'SAD'],
+    ['✓ Check', 'CHECK'],
+    ['✗ Cross', 'CROSS'],
+    ['★ Star', 'STAR'],
+    ['↑ Up Arrow', 'ARROW_UP'],
+    ['↓ Down Arrow', 'ARROW_DOWN'],
+    ['← Left Arrow', 'ARROW_LEFT'],
+    ['→ Right Arrow', 'ARROW_RIGHT'],
+    ['■ Square', 'SQUARE'],
+    ['♦ Diamond', 'DIAMOND']
+  ]
+
+  Blockly.Blocks['led_matrix_show_pattern'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('show pattern')
+        .appendField(new Blockly.FieldDropdown(LED_MATRIX_PATTERN_OPTIONS), 'PATTERN')
+        .appendField('color')
+        .appendField(new FieldColour('#ff00ff'), 'COLOR')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Displays a built-in icon on the matrix in one color.')
+    }
+  }
+
+  const LED_MATRIX_ANIMATION_OPTIONS: [string, string][] = [
+    ['Diagonal Arrow', 'DIAGONAL'],
+    ['Spinner', 'SPINNER'],
+    ['Pulsing Heart', 'PULSE_HEART'],
+    ['Blink All', 'BLINK_ALL']
+  ]
+
+  Blockly.Blocks['led_matrix_show_animation'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('show animation')
+        .appendField(new Blockly.FieldDropdown(LED_MATRIX_ANIMATION_OPTIONS), 'ANIMATION')
+        .appendField('color')
+        .appendField(new FieldColour('#00ffff'), 'COLOR')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Plays a short built-in animation on the matrix. This block waits until the animation finishes before continuing.')
+    }
+  }
+
+  Blockly.Blocks['led_matrix_rotate'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('LED Matrix')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('led_matrix')), 'PIN')
+        .appendField('rotate matrix')
+        .appendField(new Blockly.FieldDropdown([['0°', '0'], ['90°', '90'], ['180°', '180'], ['270°', '270']]), 'DEGREES')
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('system_blocks')
+      this.setTooltip('Rotates everything drawn after this block (pixels, characters, text, patterns, animations) by the chosen angle. Does not affect anything already on screen.')
+    }
+  }
+
+  // ── Buzzer melodies (RTTTL ringtone format) ────────────────────────────────
+
+  Blockly.Blocks['buzzer_play_tone_duration'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('Buzzer')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('buzzer')), 'PIN')
+        .appendField('play tone of frequency')
+      this.appendValueInput('FREQ').setCheck('Number').appendField('Hz for')
+      this.appendValueInput('DURATION').setCheck('Number').appendField('ms')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('output_blocks')
+      this.setTooltip('Plays one tone for a fixed duration, then stops and waits — unlike the plain Tone block, this one blocks until the note finishes.')
+    }
+  }
+
+  const BUZZER_MELODY_OPTIONS: [string, string][] = [
+    ['Mario', 'MARIO'],
+    ['Happy Birthday', 'HAPPY_BIRTHDAY'],
+    ['Twinkle Twinkle', 'TWINKLE'],
+    ['Jingle Bells', 'JINGLE_BELLS'],
+    ['🕉 Om Chant Tone', 'OM'],
+    ['🔔 Aarti Bell Tone', 'AARTI_BELL'],
+    ['🕉 Gayatri Mantra Tone', 'GAYATRI_MANTRA'],
+    ['🕉 Om Jai Jagdish Hare Tone', 'OM_JAI_JAGDISH_HARE'],
+    ['🕉 Hanuman Chalisa Tone', 'HANUMAN_CHALISA'],
+    ['🕉 Mahamrityunjaya Tone', 'MAHAMRITYUNJAYA'],
+    ['🕉 Ganesh Vandana Tone', 'GANESH_VANDANA']
+  ]
+
+  Blockly.Blocks['buzzer_play_melody'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('Buzzer')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('buzzer')), 'PIN')
+        .appendField('play melody')
+        .appendField(new Blockly.FieldDropdown(BUZZER_MELODY_OPTIONS), 'MELODY')
+        .appendField('at tempo')
+      this.appendValueInput('TEMPO').setCheck('Number').appendField('bpm')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('output_blocks')
+      this.setTooltip('Plays a built-in tune. This block waits until the melody finishes before continuing. The devotional options are simple bell/chime tones inspired by each mantra\'s name — a single-note buzzer can\'t chant, so these aren\'t transcriptions of the actual chant.')
+    }
+  }
+
+  Blockly.Blocks['buzzer_play_custom_melody'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('Buzzer')
+        .appendField(new Blockly.FieldDropdown(() => getComponentPins('buzzer')), 'PIN')
+        .appendField('play custom melody')
+      this.appendDummyInput()
+        .appendField(new Blockly.FieldTextInput('HappyBirthday:o=5,d=4,b=125:8g.,16g,a,g,c6,2b,8g'), 'MELODY')
+        .appendField('at tempo')
+      this.appendValueInput('TEMPO').setCheck('Number').appendField('bpm')
+      this.setInputsInline(true)
+      this.setPreviousStatement(true, null)
+      this.setNextStatement(true, null)
+      this.setStyle('output_blocks')
+      this.setTooltip('Plays any RTTTL-format ringtone string (Name:controls:notes — the same format thousands of classic ringtones online use). Tempo here overrides the b= value in the string.')
+    }
+  }
+
   // ESP32 WROOM has a built-in Bluetooth radio (Classic BT), so these blocks
   // drive it directly via the Arduino core's BluetoothSerial library — no
   // external module (e.g. HC-05) or GPIO wiring required, unlike every other
@@ -893,6 +1162,33 @@ Blockly.Blocks['input_color_is'] = {
     this.setOutput(true, "Boolean");
     this.setColour('#5B67C4');
     this.setTooltip("True if the Color Sensor's simple color classifier currently matches this color. A basic heuristic — may need different lighting/distance to classify reliably.");
+  }
+};
+
+// Pairs with the desktop app's "Tracer Run" tab: draw a path on screen, the
+// app converts it into a sequence of drive/turn timings and streams them
+// here over the board's always-on Bluetooth connection. Requires motor1 and
+// motor2 (the same DC Motor device IDs every 2-motor example in this app
+// already uses) to be placed as the left and right wheel respectively.
+Blockly.Blocks['tracer_listen'] = {
+  init: function (this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField('Tracer: Follow Drawn Path')
+    this.setPreviousStatement(true, null)
+    this.setNextStatement(true, null)
+    this.setStyle('wifi_blocks')
+    this.setTooltip('Drives motor1 (left wheel) and motor2 (right wheel) to retrace a path drawn in the desktop app\'s Tracer Run tab, streamed over Bluetooth. Place both DC Motor devices before using this.')
+    this.setHelpUrl('')
+  }
+}
+
+Blockly.Blocks['input_color_name'] = {
+  init: function() {
+    this.appendDummyInput()
+      .appendField("Detected Color Name");
+    this.setOutput(true, "String");
+    this.setColour('#5B67C4');
+    this.setTooltip("The Color Sensor's best guess at the color it's looking at, as text (\"Red\", \"Green\", \"Blue\", \"Yellow\", \"White\", \"Black\", or \"Unknown\") — print this directly instead of raw numbers.");
   }
 };
 

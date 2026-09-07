@@ -1,6 +1,6 @@
 import React from 'react'
-import { useAppStore } from '@renderer/store/useAppStore'
-import { Trash2, Settings2, X } from 'lucide-react'
+import { useAppStore, isFixedBoardDevice } from '@renderer/store/useAppStore'
+import { Trash2, Settings2, X, Lock } from 'lucide-react'
 import { boardRegistry } from '@shared/boards'
 import { COMPONENT_REQUIREMENTS, validateDeviceAssignment } from '@shared/boards/wiringEngine'
 
@@ -67,6 +67,7 @@ export const PropertiesPanel: React.FC = () => {
 
   const validation = validateDeviceAssignment(item, selectedBoard.id, placedDevices)
   const isMultiPin = reqs && !Array.isArray(reqs.requiredInterfaces)
+  const isFixed = isFixedBoardDevice(selectedBoard.id, item.id)
 
   return (
     <div className="absolute top-4 right-4 w-64 bg-surface-100/95 backdrop-blur-md border border-panel-border rounded-xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto">
@@ -109,7 +110,12 @@ export const PropertiesPanel: React.FC = () => {
 
         <div>
           <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Assigned Pin</label>
-          {isMultiPin ? (
+          {isFixed ? (
+            <div className="w-full bg-surface-200 border border-panel-border rounded-md px-2 py-1.5 text-xs text-slate-200">
+              {mappedPins.length > 0 ? mappedPins.join(' | ') : 'Unassigned'}
+              <p className="text-[9px] text-slate-500 mt-1">Soldered onboard — fixed pin, can't be changed.</p>
+            </div>
+          ) : isMultiPin ? (
             <div className="w-full bg-surface-200 border border-panel-border rounded-md px-2 py-1.5 text-xs text-slate-200">
               {mappedPins.length > 0 ? mappedPins.join(' | ') : 'Unassigned'}
               <p className="text-[9px] text-slate-500 mt-1">Auto-wired only.</p>
@@ -132,13 +138,20 @@ export const PropertiesPanel: React.FC = () => {
       </div>
 
       <div className="p-3 border-t border-panel-border bg-surface-50/50">
-        <button
-          onClick={handleDelete}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors text-xs font-medium"
-        >
-          <Trash2 size={14} />
-          Delete Component
-        </button>
+        {isFixed ? (
+          <div className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-500/10 text-slate-400 text-xs font-medium">
+            <Lock size={14} />
+            Fixed onboard part
+          </div>
+        ) : (
+          <button
+            onClick={handleDelete}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors text-xs font-medium"
+          >
+            <Trash2 size={14} />
+            Delete Component
+          </button>
+        )}
       </div>
     </div>
   )

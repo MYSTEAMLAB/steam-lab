@@ -24,6 +24,16 @@ export function getRequiredLibraries(code: string): string[] {
   if (code.includes('<OneWire.h>')) libs.push('OneWire');
   if (code.includes('<DallasTemperature.h>')) libs.push('DallasTemperature');
   if (code.includes('<Adafruit_SSD1306.h>')) libs.push('Adafruit GFX Library', 'Adafruit SSD1306');
+  // Same class of bug as the OLED one above: the color sensor's codegen
+  // (arduinoGenerator.ts) emits this #include whenever a color_sensor
+  // device is placed, but nothing installed the library for it — every
+  // project using the Color Sensor block failed to compile with
+  // "Adafruit_TCS34725.h: No such file or directory" until this was added.
+  if (code.includes('<Adafruit_TCS34725.h>')) libs.push('Adafruit TCS34725', 'Adafruit BusIO');
+  // Same class of bug again: LED Matrix blocks (arduinoGenerator.ts,
+  // ensureLedMatrixRuntime) emit this #include for AI Junior's onboard 6x6
+  // WS2812 matrix, but nothing installed the library for it.
+  if (code.includes('<FastLED.h>')) libs.push('FastLED');
   return libs;
 }
 
@@ -215,7 +225,7 @@ export function registerCompilerHandlers() {
           getRequiredLibraries(code),
           (msg) => event.sender.send('compiler:log', msg),
           () => {
-            const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '--build-path', buildDir, sketchDir]);
+            const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir]);
 
             let fullLog = '';
 
@@ -293,7 +303,7 @@ export function registerCompilerHandlers() {
           () => {
             // ── USB (serial) upload — unchanged single-step compile+upload ──
             if (!wifiTarget && !btTarget) {
-              const proc = spawn(CLI_PATH, ['compile', '--upload', '-b', fqbn, '-p', port, '--build-path', buildDir, sketchDir]);
+              const proc = spawn(CLI_PATH, ['compile', '--upload', '-b', fqbn, '-p', port, '-j', '0', '--build-path', buildDir, sketchDir]);
 
               let fullLog = '';
 
@@ -326,7 +336,7 @@ export function registerCompilerHandlers() {
             // already be running code that can receive it, from a prior USB upload:
             // WiFi needs the ArduinoOTA service (WiFi Connect block), Bluetooth needs
             // the upload agent (any Bluetooth block).
-            const compileProc = spawn(CLI_PATH, ['compile', '-b', fqbn, '--build-path', buildDir, sketchDir]);
+            const compileProc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir]);
             let fullLog = '';
 
             compileProc.stdout.on('data', (data) => {

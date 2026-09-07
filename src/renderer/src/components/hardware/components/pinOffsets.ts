@@ -57,6 +57,15 @@ export const COMPONENT_PIN_OFFSETS: Record<string, Record<string, { x: number, y
   joystick: {
     '1': { x: 2, y: 34 }
   },
+  led_matrix: {
+    '1': { x: 0, y: 74 }
+  },
+  onboard_mic: {
+    '1': { x: 0, y: 44 },
+    'sd': { x: -14, y: 44 },
+    'ws': { x: 0, y: 44 },
+    'sck': { x: 14, y: 44 }
+  },
   generic: {
     '1': { x: -8, y: 30 },
     '2': { x: 8, y: 30 }

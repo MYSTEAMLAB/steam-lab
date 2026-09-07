@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react'
 import {
   Lightbulb, CircleDot, Volume2, Disc3, Sun, Thermometer, RotateCw,
-  Radar, Waves, Hand, Move, Fan, Grid3x3, Monitor, Search, MousePointerClick, Check, Palette
+  Radar, Waves, Hand, Move, Fan, Grid3x3, Monitor, Search, Check, Palette, X,
+  LayoutGrid, Mic
 } from 'lucide-react'
 import { useAppStore } from '@renderer/store/useAppStore'
 import { useT } from '@renderer/lib/i18n/useT'
@@ -33,7 +34,9 @@ const COMPONENTS: ComponentDef[] = [
   { id: 'joystick', name: 'Analog Joystick', category: 'Sensors & Inputs', icon: Move, accent: 'bg-emerald-600' },
   { id: 'color_sensor', name: 'Color Sensor (TCS34725)', category: 'Sensors & Inputs', icon: Palette, accent: 'bg-fuchsia-600' },
 
-  { id: 'oled', name: 'OLED SSD1306', category: 'Displays', icon: Monitor, accent: 'bg-slate-800' }
+  { id: 'oled', name: 'OLED SSD1306', category: 'Displays', icon: Monitor, accent: 'bg-slate-800' },
+  { id: 'led_matrix', name: 'LED Matrix (6x6 WS2812)', category: 'Displays', icon: LayoutGrid, accent: 'bg-pink-600' },
+  { id: 'onboard_mic', name: 'Microphone (I2S)', category: 'Sensors & Inputs', icon: Mic, accent: 'bg-indigo-600' }
 ]
 
 const CATEGORY_ORDER: ComponentDef['category'][] = ['Outputs', 'Sensors & Inputs', 'Displays']
@@ -49,9 +52,13 @@ const PLACEMENT_BASE = { x: 320, y: 80 }
 const PLACEMENT_STEP = { x: 90, y: 90 }
 const PLACEMENT_COLS = 5
 
+/** Horizontal strip along the top of the Hardware Canvas — click or drag a
+ * chip onto the board below. Was a left sidebar; moved here so the canvas
+ * gets the full width instead of sharing it with a vertical parts list. */
 export const ComponentPalette: React.FC = () => {
   const t = useT()
   const [query, setQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const [justAdded, setJustAdded] = useState<string | null>(null)
   const placeCounter = useRef(0)
 
@@ -94,64 +101,75 @@ export const ComponentPalette: React.FC = () => {
   }
 
   return (
-    <div className="flex h-full flex-col bg-surface-50">
-      <div className="shrink-0 p-3 pb-2">
-        <div className="msl-field mb-2">
-          <Search size={14} className="text-slate-400 shrink-0" />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={t('searchComponents')}
-            className="w-full bg-transparent border-none text-sm font-medium text-slate-100 placeholder:text-slate-400 outline-none focus:ring-0"
-          />
-        </div>
-        <div className="flex items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1.5 text-[11px] font-semibold text-primary-700 ring-1 ring-primary-100">
-          <MousePointerClick size={13} className="shrink-0" />
-          {t('clickOrDragHint')}
-        </div>
+    <div className="flex items-center h-full bg-surface-50 border-b border-panel-border px-3 gap-3">
+      {/* Search — collapses to an icon so it doesn't eat into the strip's
+          horizontal space when not in use. */}
+      <div className="shrink-0">
+        {searchOpen ? (
+          <div className="msl-field !h-9 w-56">
+            <Search size={14} className="text-slate-400 shrink-0" />
+            <input
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onBlur={() => { if (!query) setSearchOpen(false) }}
+              placeholder={t('searchComponents')}
+              className="w-full bg-transparent border-none text-sm font-medium text-slate-100 placeholder:text-slate-400 outline-none focus:ring-0"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="text-slate-400 hover:text-slate-200 shrink-0">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            title={t('searchComponents')}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-panel-border bg-white text-slate-400 hover:text-primary-600 hover:border-primary-200 transition-colors"
+          >
+            <Search size={15} />
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-4">
+      {/* Horizontally scrolling chip strip, grouped by category with a
+          subtle divider + tiny label between groups. */}
+      <div className="flex-1 min-w-0 h-full flex items-center gap-1 overflow-x-auto overflow-y-hidden">
         {filtered.length === 0 && (
-          <p className="pt-6 text-center text-xs text-slate-400">{t('noComponentsMatch')} "{query}"</p>
+          <p className="text-xs text-slate-400 whitespace-nowrap px-2">{t('noComponentsMatch')} "{query}"</p>
         )}
-        {filtered.map(group => (
-          <div key={group.category}>
-            <h3 className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {filtered.map((group, groupIdx) => (
+          <React.Fragment key={group.category}>
+            {groupIdx > 0 && <div className="w-px h-8 bg-panel-border shrink-0 mx-1.5" />}
+            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">
               {t(CATEGORY_LABEL_KEY[group.category])}
-            </h3>
-            <div className="space-y-1.5">
-              {group.items.map(comp => {
-                const Icon = comp.icon
-                const added = justAdded === comp.id
-                return (
-                  <button
-                    key={comp.id}
-                    type="button"
-                    draggable
-                    onDragStart={e => handleDragStart(e, comp.id)}
-                    onClick={() => handleAdd(comp.id)}
-                    title={`Click to add ${comp.name}, or drag it onto the canvas`}
-                    className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left transition-all active:scale-[0.98] ${
-                      added
-                        ? 'border-emerald-300 bg-emerald-50 shadow-glow-emerald'
-                        : 'border-panel-border bg-white shadow-soft hover:border-primary-200 hover:shadow-lift'
-                    }`}
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${comp.accent} shadow-soft transition-transform group-hover:scale-105`}>
-                      {added ? <Check size={16} className="text-white" /> : <Icon size={16} className="text-white" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-slate-100">{comp.name}</span>
-                      <span className="block text-[10px] font-medium text-slate-400">
-                        {added ? t('addedToCanvas') : t('clickOrDrag')}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+            </span>
+            {group.items.map(comp => {
+              const Icon = comp.icon
+              const added = justAdded === comp.id
+              return (
+                <button
+                  key={comp.id}
+                  type="button"
+                  draggable
+                  onDragStart={e => handleDragStart(e, comp.id)}
+                  onClick={() => handleAdd(comp.id)}
+                  title={`Click to add ${comp.name}, or drag it onto the canvas`}
+                  className={`group shrink-0 flex items-center gap-2 rounded-lg border pl-1.5 pr-3 py-1.5 text-left transition-all active:scale-[0.97] ${
+                    added
+                      ? 'border-emerald-300 bg-emerald-50 shadow-glow-emerald'
+                      : 'border-panel-border bg-white shadow-soft hover:border-primary-200 hover:shadow-lift'
+                  }`}
+                >
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${comp.accent} shadow-soft transition-transform group-hover:scale-105`}>
+                    {added ? <Check size={13} className="text-white" /> : <Icon size={13} className="text-white" />}
+                  </span>
+                  <span className="whitespace-nowrap text-xs font-semibold text-slate-100">{comp.name}</span>
+                </button>
+              )
+            })}
+          </React.Fragment>
         ))}
       </div>
     </div>

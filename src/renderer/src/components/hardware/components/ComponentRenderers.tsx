@@ -310,6 +310,52 @@ export const ColorSensorComponent: React.FC<ComponentProps> = ({ device, onPinCl
   )
 }
 
+const MATRIX_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7']
+
+export const LedMatrixComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  const cell = 21
+  const gap = 3
+  const size = cell * 6 + gap * 5
+  const half = size / 2
+  return (
+    <g>
+      <rect x={-half - 8} y={-half - 8} width={size + 16} height={size + 16} rx="8" fill="#0f172a" stroke="#334155" strokeWidth="2" />
+      {Array.from({ length: 6 }).map((_, y) =>
+        Array.from({ length: 6 }).map((_, x) => (
+          <rect
+            key={`${x}-${y}`}
+            x={-half + x * (cell + gap)}
+            y={-half + y * (cell + gap)}
+            width={cell}
+            height={cell}
+            rx="2"
+            fill={MATRIX_COLORS[(x + y) % MATRIX_COLORS.length]}
+            opacity="0.85"
+          />
+        ))
+      )}
+      <text x="0" y={half + 22} fontSize="10" fill="#94a3b8" textAnchor="middle">6×6 LED Matrix</text>
+      <Hitbox x={0} y={half + 30} name="LED_DATA" isActive={activeWireSource === `${device.id}:1`} onClick={(n) => onPinClick(`${device.id}:1`, 0, half + 30)} />
+    </g>
+  )
+}
+
+export const OnboardMicComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
+  return (
+    <g>
+      <circle cx="0" cy="0" r="18" fill="#1e293b" stroke="#475569" strokeWidth="2" />
+      <circle cx="0" cy="0" r="10" fill="#334155" />
+      {[-6, -2, 2, 6].map(dx => (
+        <circle key={dx} cx={dx} cy="0" r="1" fill="#64748b" />
+      ))}
+      <text x="0" y="34" fontSize="10" fill="#94a3b8" textAnchor="middle">Onboard Mic</text>
+      <Hitbox x={-14} y={44} name="SD" isActive={activeWireSource === `${device.id}:sd`} onClick={(n) => onPinClick(`${device.id}:sd`, -14, 44)} />
+      <Hitbox x={0} y={44} name="WS" isActive={activeWireSource === `${device.id}:ws`} onClick={(n) => onPinClick(`${device.id}:ws`, 0, 44)} />
+      <Hitbox x={14} y={44} name="SCK" isActive={activeWireSource === `${device.id}:sck`} onClick={(n) => onPinClick(`${device.id}:sck`, 14, 44)} />
+    </g>
+  )
+}
+
 export const JoystickComponent: React.FC<ComponentProps> = ({ device, onPinClick, activeWireSource }) => {
   return (
     <g>

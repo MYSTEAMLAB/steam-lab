@@ -83,11 +83,17 @@ export function useProjectManager() {
         const example = getExample(action.split('|')[1])
         if (!example) return
 
-        const boardId = state.selectedBoard?.id || 'esp32'
+        // Examples that target a specific board (e.g. AI Junior) switch to
+        // it automatically, rather than silently placing AI-Junior-only
+        // devices onto whatever board the user currently has selected.
+        const targetBoard = example.board
+          ? state.availableBoards.find(b => b.id === example.board) || state.selectedBoard
+          : state.selectedBoard
+        const boardId = targetBoard?.id || 'esp32'
         state.loadProject({
           projectName: example.name,
           savedFilePath: null,
-          selectedBoard: state.selectedBoard,
+          selectedBoard: targetBoard,
           boardLayouts: { [boardId]: { devices: example.devices, wires: [] } },
           blocklyWorkspaceJson: example.blocklyWorkspaceJson
         })
