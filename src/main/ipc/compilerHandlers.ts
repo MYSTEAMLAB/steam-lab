@@ -8,7 +8,15 @@ import { uploadFirmwareOverBluetooth } from './bluetoothHandlers';
 
 export const COMPILER_DIR = path.join(app.getPath('userData'), 'compiler');
 export const CLI_PATH = path.join(COMPILER_DIR, 'arduino-cli.exe');
-const TEMP_DIR = path.join(app.getPath('temp'), 'edublocks_build');
+// Deliberately NOT under app.getPath('temp') — that's the OS temp folder,
+// which Windows, antivirus tools, and disk-cleanup utilities can and do wipe
+// between sessions. This build-path is arduino-cli's incremental cache (skips
+// recompiling unchanged core/library object files); losing it silently turns
+// every "first compile after restarting the app" into a full from-scratch
+// ESP32 core rebuild (~3.5 minutes measured here) instead of the ~30 seconds
+// a warm cache gives. userData is this app's own persistent directory
+// (same base COMPILER_DIR already uses), not subject to generic temp sweeps.
+const TEMP_DIR = path.join(app.getPath('userData'), 'build');
 
 // Libraries required by sensor/display blocks that are not bundled with the ESP32
 // core — detected from the generated sketch itself rather than hardcoded as one
@@ -112,6 +120,66 @@ export function ensureLibrariesInstalled(
         ensureLibrariesInstalled(rest, onLog, onDone);
       }
     );
+  });
+}
+
+// A persistent build-path cache (see TEMP_DIR / LAN_BUILD_DIR) makes repeat
+// compiles ~10x faster by letting arduino-cli skip recompiling unchanged
+// core/library object files — but if a compile is ever killed mid-write
+// (app closed while compiling, machine sleeps, a crash), the cached core.a
+// archive can end up with some object files rebuilt and others stale from a
+// half-finished pass. The result is a compile that "succeeds" at compiling
+// every source file but fails at the *link* step with dozens of "undefined
+// reference to `EspClass::...`/`HardwareSerial::...`" errors — confirmed by
+// reproducing it here after an interrupted compile. That failure has nothing
+// to do with the user's actual code, so silently making them see it (and
+// then keep seeing it on every future compile, since the corruption never
+// heals itself) would be a real regression from the caching win. Detect this
+// specific signature and self-heal with exactly one full rebuild.
+function looksLikeCorruptBuildCache(log: string): boolean {
+  return log.includes('ld returned 1 exit status')
+    && /undefined reference to `(HardwareSerial|EspClass|HEXBuilder|UartClass)/.test(log);
+}
+
+/** Runs one arduino-cli compile, auto-retrying once with a wiped build dir
+ *  if the failure looks like build-cache corruption rather than a real
+ *  error in the user's code. */
+export function compileWithSelfHeal(
+  args: string[],
+  buildDir: string,
+  onLog: (msg: string) => void
+): Promise<{ success: boolean; log: string }> {
+  const runOnce = (): Promise<{ success: boolean; log: string }> => {
+    return new Promise((resolve) => {
+      const proc = spawn(CLI_PATH, args);
+      let fullLog = '';
+      proc.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        fullLog += chunk;
+        onLog(chunk.trim());
+      });
+      proc.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        fullLog += chunk;
+        onLog(`[Error] ${chunk.trim()}`);
+      });
+      proc.on('close', (exitCode) => {
+        resolve({ success: exitCode === 0, log: fullLog });
+      });
+    });
+  };
+
+  return runOnce().then((result) => {
+    if (result.success || !looksLikeCorruptBuildCache(result.log)) return result;
+    onLog('[Compiler] Build cache looks corrupted from an interrupted compile — rebuilding from scratch once...');
+    try {
+      fs.rmSync(buildDir, { recursive: true, force: true });
+      fs.mkdirSync(buildDir, { recursive: true });
+    } catch (e: any) {
+      onLog(`[Compiler] Could not clear build cache: ${e.message}`);
+      return result;
+    }
+    return runOnce();
   });
 }
 
@@ -224,32 +292,14 @@ export function registerCompilerHandlers() {
         ensureLibrariesInstalled(
           getRequiredLibraries(code),
           (msg) => event.sender.send('compiler:log', msg),
-          () => {
-            const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir]);
-
-            let fullLog = '';
-
-            proc.stdout.on('data', (data) => {
-              const chunk = data.toString();
-              fullLog += chunk;
-              event.sender.send('compiler:log', chunk.trim());
-            });
-
-            proc.stderr.on('data', (data) => {
-              const chunk = data.toString();
-              fullLog += chunk;
-              event.sender.send('compiler:log', `[Error] ${chunk.trim()}`);
-            });
-
-            proc.on('close', (code) => {
-              if (code !== 0) {
-                event.sender.send('compiler:log', `==== COMPILATION FAILED ====`);
-                resolve({ success: false, log: fullLog });
-              } else {
-                event.sender.send('compiler:log', `==== COMPILATION SUCCESS ====`);
-                resolve({ success: true, log: fullLog });
-              }
-            });
+          async () => {
+            const result = await compileWithSelfHeal(
+              ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir],
+              buildDir,
+              (msg) => event.sender.send('compiler:log', msg)
+            );
+            event.sender.send('compiler:log', result.success ? `==== COMPILATION SUCCESS ====` : `==== COMPILATION FAILED ====`);
+            resolve(result);
           }
         );
 
@@ -300,34 +350,16 @@ export function registerCompilerHandlers() {
         ensureLibrariesInstalled(
           getRequiredLibraries(code),
           (msg) => event.sender.send('compiler:log', msg),
-          () => {
+          async () => {
             // ── USB (serial) upload — unchanged single-step compile+upload ──
             if (!wifiTarget && !btTarget) {
-              const proc = spawn(CLI_PATH, ['compile', '--upload', '-b', fqbn, '-p', port, '-j', '0', '--build-path', buildDir, sketchDir]);
-
-              let fullLog = '';
-
-              proc.stdout.on('data', (data) => {
-                const chunk = data.toString();
-                fullLog += chunk;
-                event.sender.send('compiler:log', chunk.trim());
-              });
-
-              proc.stderr.on('data', (data) => {
-                const chunk = data.toString();
-                fullLog += chunk;
-                event.sender.send('compiler:log', `[Error] ${chunk.trim()}`);
-              });
-
-              proc.on('close', (code) => {
-                if (code !== 0) {
-                  event.sender.send('compiler:log', `==== UPLOAD FAILED ====`);
-                  resolve({ success: false, log: fullLog });
-                } else {
-                  event.sender.send('compiler:log', `==== UPLOAD SUCCESS ====`);
-                  resolve({ success: true, log: fullLog });
-                }
-              });
+              const result = await compileWithSelfHeal(
+                ['compile', '--upload', '-b', fqbn, '-p', port, '-j', '0', '--build-path', buildDir, sketchDir],
+                buildDir,
+                (msg) => event.sender.send('compiler:log', msg)
+              );
+              event.sender.send('compiler:log', result.success ? `==== UPLOAD SUCCESS ====` : `==== UPLOAD FAILED ====`);
+              resolve(result);
               return;
             }
 
@@ -336,22 +368,15 @@ export function registerCompilerHandlers() {
             // already be running code that can receive it, from a prior USB upload:
             // WiFi needs the ArduinoOTA service (WiFi Connect block), Bluetooth needs
             // the upload agent (any Bluetooth block).
-            const compileProc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir]);
-            let fullLog = '';
+            const compileResult = await compileWithSelfHeal(
+              ['compile', '-b', fqbn, '-j', '0', '--build-path', buildDir, sketchDir],
+              buildDir,
+              (msg) => event.sender.send('compiler:log', msg)
+            );
+            let fullLog = compileResult.log;
 
-            compileProc.stdout.on('data', (data) => {
-              const chunk = data.toString();
-              fullLog += chunk;
-              event.sender.send('compiler:log', chunk.trim());
-            });
-            compileProc.stderr.on('data', (data) => {
-              const chunk = data.toString();
-              fullLog += chunk;
-              event.sender.send('compiler:log', `[Error] ${chunk.trim()}`);
-            });
-
-            compileProc.on('close', async (compileCode) => {
-              if (compileCode !== 0) {
+            {
+              if (!compileResult.success) {
                 event.sender.send('compiler:log', `==== UPLOAD FAILED (compile step) ====`);
                 resolve({ success: false, log: fullLog });
                 return;
@@ -418,7 +443,7 @@ export function registerCompilerHandlers() {
                   resolve({ success: true, log: fullLog });
                 }
               });
-            });
+            }
           }
         );
 

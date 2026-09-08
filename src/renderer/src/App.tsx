@@ -4,6 +4,7 @@ import { useAppStore } from '@renderer/store/useAppStore'
 import type { AppState, AppActions } from '@renderer/store/useAppStore'
 import { isMobilePlatform } from '@renderer/lib/mobile/mobileBridge'
 import { MobileToolbar } from '@renderer/components/MobileToolbar'
+import { SplashScreen } from '@renderer/components/SplashScreen'
 // @ts-ignore
 import logoUrl from './assets/logo.jpeg'
 
@@ -18,6 +19,10 @@ export const App: React.FC = () => {
   const setAvailableBoards = useAppStore((s: AppState & AppActions) => s.setAvailableBoards)
   const [isReady, setIsReady] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  // The animated intro plays once per launch, for its own fixed ~6.5s
+  // duration — independent of how fast board data actually loads (which is
+  // normally near-instant). Features only reveal once both are done.
+  const [showIntro, setShowIntro] = React.useState(true)
 
   React.useEffect(() => {
     async function loadBoards(): Promise<void> {
@@ -33,6 +38,10 @@ export const App: React.FC = () => {
     }
     loadBoards()
   }, [setAvailableBoards])
+
+  if (showIntro) {
+    return <SplashScreen onDone={() => setShowIntro(false)} />
+  }
 
   // ── Loading splash ─────────────────────────────────────────────────────
   if (!isReady) {

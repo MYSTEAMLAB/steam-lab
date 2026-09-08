@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { app, ipcMain } from 'electron';
-import { CLI_PATH, getRequiredLibraries, withBluetoothPartition, ensureLibrariesInstalled } from './ipc/compilerHandlers';
+import { CLI_PATH, getRequiredLibraries, withBluetoothPartition, ensureLibrariesInstalled, compileWithSelfHeal } from './ipc/compilerHandlers';
 
 // ── Local-network compile server ────────────────────────────────────────────
 // Lets the Android companion app compile Arduino sketches without a paid cloud
@@ -69,7 +69,10 @@ function readJsonBody(req: http.IncomingMessage): Promise<any> {
 // sometimes fail outright with a socket/timeout error mid-compile).
 // Requests are already serialized via enqueue() below, so a shared path is
 // safe — there's never two arduino-cli invocations touching it at once.
-const LAN_BUILD_ROOT = path.join(app.getPath('temp'), 'edublocks_lan_build');
+// Same reasoning as compilerHandlers.ts's TEMP_DIR: userData persists across
+// sessions, the OS temp folder does not — a wiped cache silently turns every
+// "first compile since restart" into a multi-minute full core rebuild.
+const LAN_BUILD_ROOT = path.join(app.getPath('userData'), 'lan_build');
 const LAN_SKETCH_DIR = path.join(LAN_BUILD_ROOT, 'sketch');
 const LAN_BUILD_DIR = path.join(LAN_BUILD_ROOT, 'build');
 
@@ -95,35 +98,24 @@ function compileOne(
 
     onLog(`[Compiler] Compiling for ${fqbn}...`);
 
-    ensureLibrariesInstalled(getRequiredLibraries(code), onLog, () => {
-      const proc = spawn(CLI_PATH, ['compile', '-b', fqbn, '-j', '0', '--build-path', LAN_BUILD_DIR, LAN_SKETCH_DIR]);
-      let fullLog = '';
-
-      proc.stdout.on('data', (d) => {
-        const chunk = d.toString();
-        fullLog += chunk;
-        onLog(chunk.trim());
-      });
-      proc.stderr.on('data', (d) => {
-        const chunk = d.toString();
-        fullLog += chunk;
-        onLog(`[Error] ${chunk.trim()}`);
-      });
-
-      proc.on('close', (exitCode) => {
-        if (exitCode !== 0) {
-          onLog('==== COMPILATION FAILED ====');
-          resolve({ success: false, log: fullLog });
-          return;
-        }
-        try {
-          const bin = fs.readFileSync(path.join(LAN_BUILD_DIR, 'sketch.ino.bin'));
-          onLog('==== COMPILATION SUCCESS ====');
-          resolve({ success: true, log: fullLog, binBase64: bin.toString('base64') });
-        } catch (e: any) {
-          resolve({ success: false, log: `${fullLog}\n${e.message}` });
-        }
-      });
+    ensureLibrariesInstalled(getRequiredLibraries(code), onLog, async () => {
+      const result = await compileWithSelfHeal(
+        ['compile', '-b', fqbn, '-j', '0', '--build-path', LAN_BUILD_DIR, LAN_SKETCH_DIR],
+        LAN_BUILD_DIR,
+        onLog
+      );
+      if (!result.success) {
+        onLog('==== COMPILATION FAILED ====');
+        resolve(result);
+        return;
+      }
+      try {
+        const bin = fs.readFileSync(path.join(LAN_BUILD_DIR, 'sketch.ino.bin'));
+        onLog('==== COMPILATION SUCCESS ====');
+        resolve({ success: true, log: result.log, binBase64: bin.toString('base64') });
+      } catch (e: any) {
+        resolve({ success: false, log: `${result.log}\n${e.message}` });
+      }
     });
   });
 }
