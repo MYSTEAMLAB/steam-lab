@@ -12,6 +12,31 @@ import { useAppStore } from '../../store/useAppStore'
 Blockly.setLocale(En as any)
 registerCustomBlocks()
 
+// Blockly.svgResize() alone only updates the <svg>'s own width/height — it
+// does NOT recompute the scrollbars' cached metrics, so a scrollbar that's
+// already stuck at a stale position (e.g. sized for the *previous* project's
+// content bounds) stays stuck even after that call. workspace.resize() is
+// the documented "resize and reposition all of the workspace chrome
+// (toolbox, trash, zoom, etc.)" method, which does recompute scrollbar
+// geometry — call both. A single rAF isn't always enough (the flexbox
+// parent can still be settling its own layout, or block content just
+// finished rendering), so this retries a couple more times shortly after.
+// Shared by every place that can invalidate the workspace's content bounds:
+// switching back to this tab, and loading a different project/example.
+function refreshWorkspaceChrome(workspace: Blockly.WorkspaceSvg): () => void {
+  const refresh = () => {
+    Blockly.svgResize(workspace)
+    workspace.resize()
+  }
+  window.requestAnimationFrame(refresh)
+  const t1 = setTimeout(refresh, 150)
+  const t2 = setTimeout(refresh, 400)
+  return () => {
+    clearTimeout(t1)
+    clearTimeout(t2)
+  }
+}
+
 export const BlocklyWorkspace: React.FC = () => {
   const blocklyDivRef = useRef<HTMLDivElement>(null)
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null)
@@ -194,58 +219,44 @@ export const BlocklyWorkspace: React.FC = () => {
   // ── Handle External Project Loads ─────────────────────────────────────────
   useEffect(() => {
     if (projectLoadTimestamp > 0 && workspaceRef.current) {
-      workspaceRef.current.clear()
-      
+      const workspace = workspaceRef.current
+      workspace.clear()
+
       const currentJson = useAppStore.getState().blocklyWorkspaceJson
       if (currentJson && Object.keys(currentJson).length > 0) {
-        deserializeWorkspace(currentJson, workspaceRef.current)
+        deserializeWorkspace(currentJson, workspace)
       } else {
-        const setupBlock = workspaceRef.current.newBlock('system_setup')
+        const setupBlock = workspace.newBlock('system_setup')
         setupBlock.moveBy(50, 50)
         setupBlock.initSvg()
         setupBlock.render()
 
-        const loopBlock = workspaceRef.current.newBlock('system_loop')
+        const loopBlock = workspace.newBlock('system_loop')
         loopBlock.moveBy(50, 250)
         loopBlock.initSvg()
         loopBlock.render()
       }
+
+      // The new project's content bounds are almost certainly different from
+      // whatever the scrollbars were last sized for (a freshly-opened
+      // example vs. whatever was on the canvas before) — without this, the
+      // scrollbar can be left showing stale geometry from the prior project.
+      return refreshWorkspaceChrome(workspace)
     }
   }, [projectLoadTimestamp])
 
   // ── Fix stray scrollbar on tab switch ─────────────────────────────────────
   // AppLayout keeps this component mounted and just toggles it between
   // display:none/block when switching tabs (so Blockly/camera state survives
-  // switching away). Blockly computes its custom SVG scrollbar position from
-  // the workspace's layout metrics — while this tab is hidden those metrics
+  // switching away). While this tab is hidden the workspace's layout metrics
   // are stale/zero, so the scrollbar can render in the wrong place the first
   // frame it's shown again. Also defensively close any flyout that was left
   // open from before the tab was hidden.
-  //
-  // Blockly.svgResize() alone only updates the <svg>'s own width/height —
-  // it does NOT recompute the scrollbars' cached metrics, so a scrollbar
-  // that was already stuck at a stale position stayed stuck even after that
-  // call. workspace.resize() is the documented "resize and reposition all
-  // of the workspace chrome (toolbox, trash, zoom, etc.)" method, which does
-  // recompute scrollbar geometry — call both. A single rAF wasn't always
-  // enough (the flexbox parent can still be settling its own layout), so
-  // this also retries a couple more times shortly after.
   useEffect(() => {
     if (activeTab !== 'blocks' || !workspaceRef.current) return
     const workspace = workspaceRef.current
     workspace.getFlyout()?.hide()
-
-    const refresh = () => {
-      Blockly.svgResize(workspace)
-      workspace.resize()
-    }
-    window.requestAnimationFrame(refresh)
-    const t1 = setTimeout(refresh, 150)
-    const t2 = setTimeout(refresh, 400)
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-    }
+    return refreshWorkspaceChrome(workspace)
   }, [activeTab])
 
   return (
