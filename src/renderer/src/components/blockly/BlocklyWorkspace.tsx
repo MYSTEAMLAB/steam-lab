@@ -138,10 +138,14 @@ export const BlocklyWorkspace: React.FC = () => {
 
     // FIX 2: Blockly calculates scrollbar positions on resize.
     // If the flexbox parent hasn't finished painting, it positions the scrollbar in the middle of the screen.
+    // svgResize() alone only updates the <svg>'s width/height — resize()
+    // additionally recomputes the scrollbars' own cached geometry, which is
+    // what actually moves a stuck scrollbar back to the right place.
     const resizeObserver = new ResizeObserver(() => {
       if (workspace) {
         window.requestAnimationFrame(() => {
           Blockly.svgResize(workspace)
+          workspace.resize()
         })
       }
     })
@@ -152,7 +156,10 @@ export const BlocklyWorkspace: React.FC = () => {
 
     // Force an immediate resize after a short delay to guarantee initial layout is caught
     setTimeout(() => {
-      if (workspace) Blockly.svgResize(workspace)
+      if (workspace) {
+        Blockly.svgResize(workspace)
+        workspace.resize()
+      }
     }, 100)
 
     // Expose for E2E tests
@@ -214,13 +221,31 @@ export const BlocklyWorkspace: React.FC = () => {
   // are stale/zero, so the scrollbar can render in the wrong place the first
   // frame it's shown again. Also defensively close any flyout that was left
   // open from before the tab was hidden.
+  //
+  // Blockly.svgResize() alone only updates the <svg>'s own width/height —
+  // it does NOT recompute the scrollbars' cached metrics, so a scrollbar
+  // that was already stuck at a stale position stayed stuck even after that
+  // call. workspace.resize() is the documented "resize and reposition all
+  // of the workspace chrome (toolbox, trash, zoom, etc.)" method, which does
+  // recompute scrollbar geometry — call both. A single rAF wasn't always
+  // enough (the flexbox parent can still be settling its own layout), so
+  // this also retries a couple more times shortly after.
   useEffect(() => {
     if (activeTab !== 'blocks' || !workspaceRef.current) return
     const workspace = workspaceRef.current
     workspace.getFlyout()?.hide()
-    window.requestAnimationFrame(() => {
+
+    const refresh = () => {
       Blockly.svgResize(workspace)
-    })
+      workspace.resize()
+    }
+    window.requestAnimationFrame(refresh)
+    const t1 = setTimeout(refresh, 150)
+    const t2 = setTimeout(refresh, 400)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
   }, [activeTab])
 
   return (

@@ -70,6 +70,12 @@ export const customTheme = Blockly.Theme.defineTheme('scratch-dark', {
     workspaceBackgroundColour: '#ffffff',
     toolboxBackgroundColour: '#ffffff',
     flyoutBackgroundColour: '#fafafa',
+    // Blockly's default flyoutOpacity is 0.8 (independent of any CSS opacity
+    // rule — it's baked into the fill Blockly itself computes) — meaning the
+    // flyout panel was 20% see-through by default, letting whatever blocks
+    // already sit on the workspace underneath (Setup/Loop, etc.) show
+    // through faintly behind the flyout's own blocks. Force fully opaque.
+    flyoutOpacity: 1,
     flyoutForegroundColour: '#334155',
     scrollbarColour: '#e4e4e7',
     insertionMarkerColour: '#a855f7',

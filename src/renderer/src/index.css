@@ -326,13 +326,25 @@ html, body, #root {
 }
 
 /* ── Flyout Background (SVG path/rect) ────────────────────────────────── */
+/* The flyout background rect alone wasn't fully hiding the workspace
+   underneath — blocks placed under the flyout's area (e.g. Setup/Loop near
+   the top-left) showed through faintly. Belt-and-suspenders: force full
+   opacity on the flyout's own SVG/container layers too, not just its
+   background shape, in case a translucent ancestor was letting it bleed. */
 .blocklyFlyout {
   border-right: none !important;
   border-left: none !important;
+  opacity: 1 !important;
+}
+
+.blocklyFlyoutSvg,
+.blocklyFlyout > svg {
+  opacity: 1 !important;
 }
 
 .blocklyFlyoutBackground {
   fill: #fafafa !important;
+  opacity: 1 !important;
   stroke: none !important;
   stroke-width: 0 !important;
   filter: none !important;
