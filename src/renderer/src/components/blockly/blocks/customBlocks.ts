@@ -14,7 +14,7 @@ import { COMPONENT_REQUIREMENTS } from '@shared/boards/wiringEngine'
 import { getTrainedClassNames } from '@renderer/lib/ai/imageClassifier'
 import { COCO_LABELS } from '@renderer/lib/ai/objectDetector'
 import { SHAPE_LABELS } from '@renderer/lib/ai/shapeDetector'
-import { EXPRESSION_LABELS } from '@renderer/lib/ai/expressionDetector'
+import { EXPRESSION_LABELS } from '@renderer/lib/ai/expressionLabels'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic Pin Dropdown Helpers

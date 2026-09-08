@@ -14,7 +14,15 @@ import {
 import { loadGestureRecognizer, recognize, type GestureResult } from '@renderer/lib/ai/gestureRecognizer'
 import { loadObjectDetector, detectObjects, type DetectedObject } from '@renderer/lib/ai/objectDetector'
 import { loadShapeDetector, detectShapes, type DetectedShape } from '@renderer/lib/ai/shapeDetector'
-import { loadExpressionDetector, detectExpression, type DetectedExpression } from '@renderer/lib/ai/expressionDetector'
+// Type-only — face-api.js (which this module wraps) bundles its own private
+// tfjs-core@1.7.0 that collides with the app's tfjs-core@4.22.0 the moment
+// it's loaded (see the "Face Expression" toggle below), producing three
+// harmless-but-noisy TF.js console warnings ("webgl/cpu backend was already
+// registered", "Platform browser has already been set") on every launch —
+// even though the feature is disabled and this code path never runs. A
+// type-only import is erased at compile time, so it can't trigger that; the
+// real module is loaded lazily, only if this feature is ever re-enabled.
+import type { DetectedExpression } from '@renderer/lib/ai/expressionDetector'
 import { createMicLevelMeter, type MicLevelMeter } from '@renderer/lib/ai/micLevel'
 import { sendClassPrediction, sendMicLevel, sendGesture, sendObject, sendShape, sendExpression } from '@renderer/lib/ai/aiSerialWriter'
 
@@ -37,6 +45,7 @@ export const AIVisionPanel: React.FC = () => {
   const shapeCanvasRef = useRef<HTMLCanvasElement>(null)
   const expressionCanvasRef = useRef<HTMLCanvasElement>(null)
   const expressionBusyRef = useRef(false)
+  const expressionModuleRef = useRef<typeof import('@renderer/lib/ai/expressionDetector') | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const micMeterRef = useRef<MicLevelMeter | null>(null)
   const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -316,8 +325,12 @@ export const AIVisionPanel: React.FC = () => {
   useEffect(() => {
     if (!expressionEnabled || expressionModelReady || expressionLoading) return
     setExpressionLoading(true)
-    loadExpressionDetector()
-      .then(() => setExpressionModelReady(true))
+    import('@renderer/lib/ai/expressionDetector')
+      .then(async (mod) => {
+        expressionModuleRef.current = mod
+        await mod.loadExpressionDetector()
+        setExpressionModelReady(true)
+      })
       .catch(err => console.error('[AIVisionPanel] Expression detector load failed', err))
       .finally(() => setExpressionLoading(false))
   }, [expressionEnabled, expressionModelReady, expressionLoading])
@@ -341,7 +354,8 @@ export const AIVisionPanel: React.FC = () => {
 
       expressionBusyRef.current = true
       try {
-        const result = await detectExpression(video)
+        if (!expressionModuleRef.current) return
+        const result = await expressionModuleRef.current.detectExpression(video)
         if (cancelled) return
         setExpression(result)
         if (result && isStreaming) sendExpression(result.expression, result.confidence)

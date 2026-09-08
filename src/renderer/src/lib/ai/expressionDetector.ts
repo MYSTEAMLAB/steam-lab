@@ -1,4 +1,5 @@
 import * as faceapi from 'face-api.js'
+export { EXPRESSION_LABELS } from './expressionLabels'
 
 // Bundled locally under public/ai-models/face-api — same offline-only rule as the other AI
 // assets. Two small nets: TinyFaceDetector (locates the face) + FaceExpressionNet (classifies
@@ -27,8 +28,6 @@ export interface DetectedExpression {
   confidence: number // 0-100
   boundingBox: { x: number; y: number; width: number; height: number }
 }
-
-export const EXPRESSION_LABELS = ['Neutral', 'Happy', 'Sad', 'Angry', 'Fearful', 'Disgusted', 'Surprised'] as const
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
