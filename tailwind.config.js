@@ -49,6 +49,10 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        // Rounded, chunky display face for headings, tab labels, and big
+        // buttons — the "fun for kids" typographic voice. Body text and code
+        // stay in Inter/mono for readability.
+        display: ['Baloo 2', 'system-ui', 'sans-serif'],
       },
       // Soft, layered depth instead of hard 1px lines — reads friendlier and keeps
       // the three work areas visually separate without heavy borders.

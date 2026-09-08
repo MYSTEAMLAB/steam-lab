@@ -291,7 +291,7 @@ export const Toolbar: React.FC = () => {
   const isBusy = isCompiling || isUploading
 
   return (
-    <div className="h-14 bg-gradient-to-b from-white to-surface-50 border-b border-panel-border flex items-center justify-between px-4 shrink-0 shadow-soft z-10 relative">
+    <div className="h-[72px] bg-gradient-to-b from-white to-surface-50 border-b border-panel-border flex items-center justify-between px-5 shrink-0 shadow-soft z-10 relative">
       {/* Travelling stripe along the top edge while the toolchain is working —
           long compiles otherwise look like the app has frozen. */}
       {isBusy && <div className="absolute top-0 left-0 right-0 h-[3px] msl-busy-bar" />}
@@ -302,11 +302,11 @@ export const Toolbar: React.FC = () => {
           onClick={handleCompile}
           disabled={isCompiling || isUploading || !selectedBoard}
           title="Check your blocks compile without uploading"
-          className="msl-btn msl-btn-ghost"
+          className="msl-btn msl-btn-primary"
         >
           {isCompiling
-            ? <Loader2 size={16} className="animate-spin text-primary-500" />
-            : <Play size={16} className="text-primary-500" />}
+            ? <Loader2 size={18} className="animate-spin" />
+            : <Play size={18} fill="currentColor" />}
           {t('verify')}
         </button>
 

@@ -52,7 +52,7 @@ export const AppLayout: React.FC = () => {
         className="
           relative z-40
           flex items-center justify-between
-          px-4 h-14 shrink-0
+          px-5 h-[68px] shrink-0
           bg-gradient-to-b from-white to-surface-50
           border-b border-panel-border shadow-soft
           app-drag-region
@@ -61,15 +61,15 @@ export const AppLayout: React.FC = () => {
         {/* Left: Logo + project name */}
         <div className="flex items-center gap-3 app-no-drag">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center bg-white rounded-xl p-1 ring-1 ring-panel-border shadow-soft">
-              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+            <div className="flex items-center justify-center bg-white rounded-2xl p-1 ring-2 ring-primary-100 shadow-soft">
+              <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-xl" />
             </div>
-            <span className="text-[15px] font-extrabold tracking-tight uppercase bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">
+            <span className="font-display text-xl font-extrabold tracking-tight bg-gradient-to-r from-primary-600 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent">
               {t('appName')}
             </span>
           </div>
 
-          <span className="w-px h-5 bg-panel-border" />
+          <span className="w-px h-6 bg-panel-border" />
 
           <span className="text-sm text-slate-300 font-semibold">
             {projectName}
@@ -120,36 +120,36 @@ export const AppLayout: React.FC = () => {
           className="flex flex-col flex-1 overflow-hidden"
         >
           {/* Tabs Header */}
-          <div className="flex items-center h-10 shrink-0 border-b border-panel-border bg-gradient-to-b from-surface-100 to-surface-50">
+          <div className="flex items-center h-16 shrink-0 border-b border-panel-border bg-gradient-to-b from-surface-100 to-surface-50">
             <button
               onClick={() => setActiveTab('blocks')}
-              className={`msl-tab ${activeTab === 'blocks' ? 'msl-tab-active text-primary-600' : ''}`}
+              className={`msl-tab ${activeTab === 'blocks' ? 'msl-tab-active bg-primary-500 text-white' : ''}`}
             >
-              <BookOpen size={14} /> {t('tabBlocks')}
+              <BookOpen size={18} /> {t('tabBlocks')}
             </button>
             <button
               onClick={() => setActiveTab('hardware')}
-              className={`msl-tab ${activeTab === 'hardware' ? 'msl-tab-active text-emerald-600' : ''}`}
+              className={`msl-tab ${activeTab === 'hardware' ? 'msl-tab-active bg-emerald-500 text-white' : ''}`}
             >
-              <Cpu size={14} /> {t('tabHardwareCanvas')}
+              <Cpu size={18} /> {t('tabHardwareCanvas')}
             </button>
             <button
               onClick={() => setActiveTab('ai')}
-              className={`msl-tab ${activeTab === 'ai' ? 'msl-tab-active text-violet-600' : ''}`}
+              className={`msl-tab ${activeTab === 'ai' ? 'msl-tab-active bg-violet-500 text-white' : ''}`}
             >
-              <Camera size={14} /> {t('tabAiVision')}
+              <Camera size={18} /> {t('tabAiVision')}
             </button>
             <button
               onClick={() => setActiveTab('simulator')}
-              className={`msl-tab ${activeTab === 'simulator' ? 'msl-tab-active text-amber-600' : ''}`}
+              className={`msl-tab ${activeTab === 'simulator' ? 'msl-tab-active bg-amber-500 text-white' : ''}`}
             >
-              <PlayCircle size={14} /> {t('tabSimulator')}
+              <PlayCircle size={18} /> {t('tabSimulator')}
             </button>
             <button
               onClick={() => setActiveTab('tracer')}
-              className={`msl-tab ${activeTab === 'tracer' ? 'msl-tab-active text-rose-600' : ''}`}
+              className={`msl-tab ${activeTab === 'tracer' ? 'msl-tab-active bg-rose-500 text-white' : ''}`}
             >
-              <Route size={14} /> Tracer Run
+              <Route size={18} /> Tracer Run
             </button>
           </div>
 
@@ -183,24 +183,24 @@ export const AppLayout: React.FC = () => {
           "
         >
           {/* Tabs Header */}
-          <div className="flex items-center h-10 shrink-0 border-b border-panel-border bg-gradient-to-b from-surface-100 to-surface-50">
+          <div className="flex items-center h-14 shrink-0 border-b border-panel-border bg-gradient-to-b from-surface-100 to-surface-50">
             <button
               onClick={() => setActiveRightTab('code')}
-              className={`msl-tab flex-1 ${activeRightTab === 'code' ? 'msl-tab-active text-primary-600' : ''}`}
+              className={`msl-tab flex-1 ${activeRightTab === 'code' ? 'msl-tab-active bg-primary-500 text-white' : ''}`}
             >
-              <Code2 size={14} /> {t('tabCode')}
+              <Code2 size={16} /> {t('tabCode')}
             </button>
             <button
               onClick={() => setActiveRightTab('connections')}
-              className={`msl-tab flex-1 ${activeRightTab === 'connections' ? 'msl-tab-active text-emerald-600' : ''}`}
+              className={`msl-tab flex-1 ${activeRightTab === 'connections' ? 'msl-tab-active bg-emerald-500 text-white' : ''}`}
             >
-              <Cable size={14} /> {t('tabWires')}
+              <Cable size={16} /> {t('tabWires')}
             </button>
             <button
               onClick={() => setActiveRightTab('monitor')}
-              className={`msl-tab flex-1 ${activeRightTab === 'monitor' ? 'msl-tab-active text-violet-600' : ''}`}
+              className={`msl-tab flex-1 ${activeRightTab === 'monitor' ? 'msl-tab-active bg-violet-500 text-white' : ''}`}
             >
-              <Terminal size={14} /> {t('tabMonitor')}
+              <Terminal size={16} /> {t('tabMonitor')}
             </button>
           </div>
 
