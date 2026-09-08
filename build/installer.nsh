@@ -73,7 +73,20 @@
 ;     This is arduino-cli/Arduino IDE 2.x's standard shared default location,
 ;     not something private to this app — the prompt calls that out so users
 ;     who also use the Arduino IDE separately can choose to keep it.
+;
+; IMPORTANT: when installing a new version over an existing one, electron-
+; builder's installer runs the *previous* version's uninstaller silently
+; (Uninstall.exe /S) as an automatic first step, before copying the new
+; files. MessageBox is NOT suppressed by that silent flag on its own — it
+; still pops up and blocks, waiting for a click nobody is watching for,
+; which is exactly what made every upgrade look "stuck while uninstalling
+; the older version." IfSilent skips the prompt (and safely defaults to
+; keeping the data — never destroy anything during an unattended step) so
+; only a user manually running the uninstaller from Control Panel/Settings
+; ever sees it.
 !macro customUnInstall
+  IfSilent skip_data_delete
+
   MessageBox MB_YESNO|MB_ICONQUESTION "Do you also want to delete all MY STEAM LAB data from this computer?$\r$\n$\r$\nThis permanently deletes your saved settings and the downloaded Arduino/ESP32 compiler toolchain (used for Verify/Upload). This cannot be undone.$\r$\n$\r$\nChoose No to keep this data — for example if you plan to reinstall, or if you also use the Arduino IDE, which shares the same toolchain folder." IDNO skip_data_delete
 
     RMDir /r "$APPDATA\my-stream-lab"
