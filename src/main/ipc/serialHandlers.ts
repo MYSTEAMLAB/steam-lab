@@ -4,6 +4,18 @@ import { ReadlineParser } from '@serialport/parser-readline';
 
 let currentPort: SerialPort | null = null;
 
+// Called on app quit — an open SerialPort is a native handle that can keep
+// the process alive in the background after every window is closed, which
+// is exactly what makes an installer/updater's "please close the app
+// first" check fail even though the user already closed the window (see
+// also stopLocalCompileServer, the other lingering-handle source).
+export function closeSerialPort(): void {
+  if (currentPort && currentPort.isOpen) {
+    currentPort.close();
+  }
+  currentPort = null;
+}
+
 export function registerSerialHandlers() {
   ipcMain.handle('serial:getPorts', async (event) => {
     try {

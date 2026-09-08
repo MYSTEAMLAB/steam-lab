@@ -4,9 +4,9 @@ import { pathToFileURL } from 'url';
 import { is } from '@electron-toolkit/utils';
 import { registerBoardHandlers } from './ipc/boardHandlers';
 import { registerCompilerHandlers } from './ipc/compilerHandlers';
-import { registerSerialHandlers } from './ipc/serialHandlers';
+import { registerSerialHandlers, closeSerialPort } from './ipc/serialHandlers';
 import { registerBluetoothHandlers } from './ipc/bluetoothHandlers';
-import { registerLocalCompileServerHandlers } from './localCompileServer';
+import { registerLocalCompileServerHandlers, stopLocalCompileServer } from './localCompileServer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Security note: contextIsolation + contextBridge is the primary security
@@ -186,4 +186,17 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Two things can hold a native/socket handle open in the background after
+// every window is closed — an open serial port (left connected in the
+// Serial Monitor) and the local mobile-compile HTTP server (Tools > Mobile
+// Compile Server) — either one keeps the underlying Node process alive even
+// though Electron considers itself "quit". That's exactly what makes an
+// installer/updater's "please close the app first" check keep failing even
+// after the user closes the window: the process is still genuinely running,
+// just invisibly. Close both before the app actually exits.
+app.on('before-quit', () => {
+  closeSerialPort();
+  stopLocalCompileServer();
 });
