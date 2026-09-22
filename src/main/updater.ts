@@ -59,12 +59,19 @@ export function setupAutoUpdater(): void {
   });
 
   autoUpdater.on('update-downloaded', async (info) => {
+    // Confirm before touching anything: clicking "Yes" is what actually
+    // closes the running app (via the before-quit cleanup below, which lets
+    // go of the serial port and any background compile server) and lets the
+    // installer take over — nothing installs silently behind the user's back.
     const { response } = await showBox({
       type: 'info',
-      title: 'Update Ready',
-      message: `Version ${info.version} has been downloaded.`,
-      detail: 'Restart MY STEAM LAB now to install the update?',
-      buttons: ['Restart Now', 'Later'],
+      title: 'Install Update',
+      message: `Version ${info.version} has been downloaded and is ready to install.`,
+      detail:
+        'Do you want to proceed with installation of the update?\n\n' +
+        'Clicking "Yes" will close MY STEAM LAB and continue the installation.',
+      buttons: ['Yes', 'No'],
+      defaultId: 0,
       cancelId: 1
     });
     if (response === 0) autoUpdater.quitAndInstall();
