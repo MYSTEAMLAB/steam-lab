@@ -57,6 +57,116 @@
   FunctionEnd
 !endif
 
+; Override electron-builder's default "is the app running?" check (see
+; node_modules/app-builder-lib/templates/nsis/include/
+; allowOnlyOneInstallerInstance.nsh, macro _CHECK_APP_RUNNING) to try a
+; graceful close first.
+;
+; The stock check goes straight to `taskkill` (then `taskkill /f`) and gives
+; up after ~3 seconds total, showing "my-stream-lab cannot be closed. Please
+; close it manually..." if that's not enough. A forceful kill never gives the
+; app a chance to run its own before-quit cleanup (src/main/index.ts closes
+; the serial port and any background compile server there) — and Windows can
+; take noticeably longer than 3 seconds to fully release a process that has
+; a pending I/O request on a COM port, even after TerminateProcess.
+;
+; So: first ask the app to close itself normally (WM_CLOSE to its main
+; window, matched by the exact title set in createWindow()), and give it a
+; real window to exit cleanly — which releases the serial port properly and
+; means the process is usually just gone by the time we'd otherwise resort
+; to force-killing it. Only if that fails do we fall through to the same
+; taskkill loop the stock check uses, with a longer retry budget as a
+; backstop.
+!ifndef BUILD_UNINSTALLER
+  !include "getProcessInfo.nsh"
+  Var msSelfPid
+
+  !macro customCheckAppRunning
+    ${GetProcessInfo} 0 $msSelfPid $1 $2 $3 $4
+    ${if} $3 != "${APP_EXECUTABLE_FILENAME}"
+      ${if} ${isUpdated}
+        Sleep 300
+      ${endIf}
+
+      !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+      ${if} $R0 == 0
+        ; Ask nicely first — this is what lets the app's own before-quit
+        ; handler close the serial port before anything gets forceful.
+        FindWindow $R2 "Chrome_WidgetWin_1" "MY STEAM LAB"
+        ${if} $R2 != 0
+          SendMessage $R2 0x0010 0 0 /TIMEOUT=500 ; WM_CLOSE
+
+          StrCpy $R3 0
+          ms_graceful_wait:
+            IntOp $R3 $R3 + 1
+            !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+            ${if} $R0 != 0
+              Goto ms_after_graceful ; already gone — skip taskkill entirely
+            ${endIf}
+            ${if} $R3 < 10
+              Sleep 500
+              Goto ms_graceful_wait
+            ${endIf}
+        ${endIf}
+
+        ${if} ${isUpdated}
+          Sleep 1000
+          Goto ms_doStopProcess
+        ${endIf}
+        MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "$(appRunning)" /SD IDOK IDOK ms_doStopProcess
+        Quit
+
+        ms_doStopProcess:
+        DetailPrint `Closing running "${PRODUCT_NAME}"...`
+
+        !ifdef INSTALL_MODE_PER_ALL_USERS
+          nsExec::Exec `taskkill /im "${APP_EXECUTABLE_FILENAME}" /fi "PID ne $msSelfPid"`
+        !else
+          nsExec::Exec `%SYSTEMROOT%\System32\cmd.exe /c taskkill /im "${APP_EXECUTABLE_FILENAME}" /fi "PID ne $msSelfPid" /fi "USERNAME eq %USERNAME%"`
+        !endif
+        Sleep 300
+
+        StrCpy $R1 0
+
+        ms_loop:
+          IntOp $R1 $R1 + 1
+
+          !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+          ${if} $R0 == 0
+            Sleep 1000
+            !ifdef INSTALL_MODE_PER_ALL_USERS
+              nsExec::Exec `taskkill /f /im "${APP_EXECUTABLE_FILENAME}" /fi "PID ne $msSelfPid"`
+            !else
+              nsExec::Exec `%SYSTEMROOT%\System32\cmd.exe /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}" /fi "PID ne $msSelfPid" /fi "USERNAME eq %USERNAME%"`
+            !endif
+            !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+            ${If} $R0 == 0
+              DetailPrint `Waiting for "${PRODUCT_NAME}" to close (attempt $R1)...`
+              Sleep 2000
+            ${else}
+              Goto ms_not_running
+            ${endIf}
+          ${else}
+            Goto ms_not_running
+          ${endIf}
+
+          ; Stock check gives up after 1 retry (~3s total). A pending serial
+          ; I/O can take longer than that to release even under a forced
+          ; kill, so give this considerably more room — about 30s — before
+          ; showing the "cannot be closed" prompt.
+          ${if} $R1 > 12
+            MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(appCannotBeClosed)" /SD IDCANCEL IDRETRY ms_loop
+            Quit
+          ${else}
+            Goto ms_loop
+          ${endIf}
+        ms_not_running:
+        ms_after_graceful:
+      ${endIf}
+    ${endIf}
+  !macroend
+!endif
+
 ; Custom uninstaller behavior for MY STEAM LAB.
 ;
 ; electron-builder's built-in `deleteAppDataOnUninstall` option removes app
