@@ -65,6 +65,7 @@ function createWindow(): void {
       nodeIntegration: false,   // No raw Node.js access in renderer
       webSecurity: true,
       allowRunningInsecureContent: false,
+      devTools: is.dev,         // Inspector only in `npm run dev`; disabled in packaged builds
     },
   });
 

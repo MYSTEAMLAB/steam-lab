@@ -194,14 +194,9 @@ Keyboard Shortcuts:
     {
       label: 'HELP',
       submenu: [
-        { label: 'User Guide', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab#readme') },
         { label: 'Keyboard Shortcuts', click: (item, window) => showShortcuts(window) },
-        { label: 'Documentation', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab/wiki') },
         { type: 'separator' },
-        { label: 'Report Issue', click: () => shell.openExternal('https://github.com/MYSTEAMLAB/steam-lab/issues') },
         { label: 'Check for Updates', click: () => checkForUpdatesManually() },
-        { type: 'separator' },
-        { label: 'Toggle Developer Tools', role: 'toggleDevTools' },
         { type: 'separator' },
         { label: 'About MY STEAM LAB', click: () => shell.openExternal('https://www.mysteamlab.com') }
       ]
