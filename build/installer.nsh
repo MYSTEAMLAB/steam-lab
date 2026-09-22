@@ -77,11 +77,19 @@
 ; to force-killing it. Only if that fails do we fall through to the same
 ; taskkill loop the stock check uses, with a longer retry budget as a
 ; backstop.
-!ifndef BUILD_UNINSTALLER
-  !include "getProcessInfo.nsh"
-  Var msSelfPid
+;
+; IMPORTANT — do NOT scope this to !ifndef BUILD_UNINSTALLER. This macro is
+; used by both the live installer's own check (installSection.nsh, compiled
+; with BUILD_UNINSTALLER undefined) AND the standalone Uninstall.exe that
+; gets silently re-run on every upgrade (uninstaller.nsh's un.checkAppRunning,
+; compiled ONLY when BUILD_UNINSTALLER is defined). Guarding this out of that
+; second pass — which the first version of this fix mistakenly did — means
+; the exact upgrade scenario this is meant to fix keeps using electron-
+; builder's unpatched default check instead.
+!include "getProcessInfo.nsh"
+Var msSelfPid
 
-  !macro customCheckAppRunning
+!macro customCheckAppRunning
     ${GetProcessInfo} 0 $msSelfPid $1 $2 $3 $4
     ${if} $3 != "${APP_EXECUTABLE_FILENAME}"
       ${if} ${isUpdated}
@@ -165,7 +173,48 @@
       ${endIf}
     ${endIf}
   !macroend
-!endif
+
+; Overrides the uninstaller's file-removal step, used during an upgrade (see
+; node_modules/app-builder-lib/templates/nsis/uninstaller.nsh, the default
+; customRemoveFiles-less branch). Stock behavior: rename every file in
+; $INSTDIR into a temp holding folder (so the new version's files can be
+; copied in), and if even a single file can't be renamed — for example
+; because Windows hasn't quite released its handle yet, a beat after the app
+; process just closed — Abort immediately, no retry. That Abort's exit code
+; propagates to the parent installer (handleUninstallResult in installUtil.nsh),
+; which then shows "Failed to uninstall old application files...: 2" and
+; quits itself too — so the whole install dies together with the app closing,
+; even though checkAppRunning above already confirmed the app was gone.
+; Retry a few times with a short delay before actually giving up.
+!macro customRemoveFiles
+  ${if} ${isUpdated}
+    StrCpy $R6 0
+    ms_remove_retry:
+      IntOp $R6 $R6 + 1
+      CreateDirectory "$PLUGINSDIR\old-install"
+
+      Push ""
+      Call un.atomicRMDir
+      Pop $R0
+
+      ${if} $R0 != 0
+        Push ""
+        Call un.restoreFiles
+        Pop $R0
+
+        ${if} $R6 < 6
+          DetailPrint "A file is still in use, retrying ($R6)..."
+          Sleep 1000
+          Goto ms_remove_retry
+        ${else}
+          Abort `Can't rename "$INSTDIR" to "$PLUGINSDIR\old-install".`
+        ${endIf}
+      ${endIf}
+  ${endIf}
+
+  # Remove all files (or remaining shallow directories from the block above)
+  RMDir /r $INSTDIR
+!macroend
 
 ; Custom uninstaller behavior for MY STEAM LAB.
 ;
