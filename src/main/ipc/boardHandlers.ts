@@ -1,4 +1,4 @@
-import { IpcMain } from 'electron'
+import { app, IpcMain } from 'electron'
 import { boardRegistry } from '../../shared/boards'
 import type { IpcChannels } from '../../shared/types/ipc'
 
@@ -31,8 +31,15 @@ export function registerBoardHandlers(ipcMain: IpcMain): void {
   })
 
   // ── app:version ───────────────────────────────────────────────────────────
+  // process.env.npm_package_version (the previous source here) is only set
+  // when a real `npm` process launched us — true in `npm run dev`, never
+  // true in the packaged app, since there's no npm involved at all once
+  // installed. That silently fell back to the hardcoded '1.0.0' default on
+  // every real build, regardless of the actual version — app.getVersion()
+  // reads it from the packaged app's own metadata instead (same source
+  // updater.ts already uses for its "you are on vX" messages).
   const versionChannel: IpcChannels['app:version'] = 'app:version'
   ipcMain.handle(versionChannel, async () => {
-    return process.env['npm_package_version'] ?? '1.0.0'
+    return app.getVersion()
   })
 }

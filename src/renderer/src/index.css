@@ -59,6 +59,24 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #3b82f6;
 }
+/* The default corner square (where a vertical and horizontal scrollbar
+   meet, e.g. the Blockly workspace) is opaque white by default — visible
+   as a small bright square against every other panel's off-white/transparent
+   background. Match the transparent track instead. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Text selection
+   Browser-default selection blue doesn't match the app's own primary blue —
+   small detail, but it's the one color a student sees constantly while
+   editing code or renaming a project.
+───────────────────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(59, 130, 246, 0.28);
+  color: inherit;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Focus ring (accessible keyboard navigation)
@@ -259,6 +277,21 @@ html, body, #root {
   .msl-field:focus-within {
     border-color: #60a5fa;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  }
+
+  /* Native <select> elements inside a themed field (port picker, language
+     switcher): swap each platform's own inconsistent arrow glyph for the
+     same ChevronDown lucide already uses everywhere else a dropdown needs
+     one (BoardSelector, etc.), so a "real" <select> reads as part of the
+     same design system instead of a plain HTML control dropped in. */
+  .msl-field select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 1.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 13px;
   }
 
   /* ── Panel header ───────────────────────────────────────────────────────── */

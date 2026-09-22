@@ -22,6 +22,8 @@ import { useT } from '@renderer/lib/i18n/useT'
 
 // @ts-ignore
 import logoUrl from '../assets/logo.jpeg'
+// @ts-ignore
+import makeInIndiaUrl from '../assets/make-in-india.png'
 
 export const AppLayout: React.FC = () => {
   const selectedBoard = useAppStore(selectSelectedBoard)
@@ -36,6 +38,14 @@ export const AppLayout: React.FC = () => {
 
   // Initialize Project Manager
   useProjectManager()
+
+  // Actual running app version (was hardcoded "v1.0.0" in the header pill —
+  // see the app:version IPC handler fix in boardHandlers.ts for why that
+  // was always wrong in a packaged build).
+  const [appVersion, setAppVersion] = React.useState('')
+  React.useEffect(() => {
+    (window as any).api?.getVersion?.().then(setAppVersion).catch(() => {})
+  }, [])
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-DEFAULT text-slate-200 select-none">
@@ -52,7 +62,7 @@ export const AppLayout: React.FC = () => {
         className="
           relative z-40
           flex items-center justify-between
-          px-5 h-[68px] shrink-0
+          px-5 h-[54px] shrink-0
           bg-gradient-to-b from-white to-surface-50
           border-b border-panel-border shadow-soft
           app-drag-region
@@ -61,10 +71,13 @@ export const AppLayout: React.FC = () => {
         {/* Left: Logo + project name */}
         <div className="flex items-center gap-3 app-no-drag">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center bg-white rounded-2xl p-1 ring-2 ring-primary-100 shadow-soft">
-              <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-xl" />
+            <div className="flex items-center justify-center bg-white rounded-xl p-0.5 ring-2 ring-primary-100 shadow-soft">
+              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             </div>
-            <span className="font-display text-xl font-extrabold tracking-tight bg-gradient-to-r from-primary-600 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent">
+            {/* tracking-wide (not -tight): the name is now set in caps end to
+                end (title bar, HELP menu, status bar) — caps read cramped at
+                tight tracking, so this loosens it back up to match. */}
+            <span className="font-display text-lg font-extrabold tracking-wide bg-gradient-to-r from-primary-600 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent">
               {t('appName')}
             </span>
           </div>
@@ -96,9 +109,11 @@ export const AppLayout: React.FC = () => {
         {/* Right: Language + version pill */}
         <div className="flex items-center gap-2 app-no-drag">
           <LanguageSelector />
-          <span className="msl-pill bg-surface-100 text-slate-400 ring-1 ring-panel-border">
-            v1.0.0
-          </span>
+          {appVersion && (
+            <span className="msl-pill bg-surface-100 text-slate-400 ring-1 ring-panel-border">
+              v{appVersion}
+            </span>
+          )}
         </div>
       </header>
 
@@ -237,10 +252,21 @@ export const AppLayout: React.FC = () => {
           <span className="font-semibold text-primary-600">{selectedBoard?.name ?? '—'}</span>
         </span>
         <span className="font-bold uppercase tracking-[0.14em] text-slate-500">{t('appName')}</span>
-        <span className="flex items-center gap-1.5 text-emerald-600">
-          <span className="msl-dot msl-dot-live" />
-          {t('statusReady')}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-emerald-600">
+            <span className="msl-dot msl-dot-live" />
+            {t('statusReady')}
+          </span>
+          {/* Small badge, bottom-right corner of the app — doesn't affect any
+              other layout since the status bar's fixed 28px height already
+              caps how big it can read. */}
+          <img
+            src={makeInIndiaUrl}
+            alt="Make in India"
+            title="Made in India"
+            className="h-4 w-auto rounded-sm opacity-85 hover:opacity-100 transition-opacity"
+          />
+        </div>
       </footer>
     </div>
   )

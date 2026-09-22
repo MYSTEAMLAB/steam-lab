@@ -291,7 +291,7 @@ export const Toolbar: React.FC = () => {
   const isBusy = isCompiling || isUploading
 
   return (
-    <div className="h-[72px] bg-gradient-to-b from-white to-surface-50 border-b border-panel-border flex items-center justify-between px-5 shrink-0 shadow-soft z-10 relative">
+    <div className="h-[58px] bg-gradient-to-b from-white to-surface-50 border-b border-panel-border flex items-center justify-between px-5 shrink-0 shadow-soft z-10 relative">
       {/* Travelling stripe along the top edge while the toolchain is working —
           long compiles otherwise look like the app has frozen. */}
       {isBusy && <div className="absolute top-0 left-0 right-0 h-[3px] msl-busy-bar" />}

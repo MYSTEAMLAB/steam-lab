@@ -40,7 +40,7 @@ export type TranslationKey = keyof typeof en
 
 const en = {
   // ── Header ──────────────────────────────────────────────────────────────
-  appName: 'My Steam Lab',
+  appName: 'MY STEAM LAB',
   unsavedChanges: 'Unsaved changes',
 
   // ── Center tabs ─────────────────────────────────────────────────────────
