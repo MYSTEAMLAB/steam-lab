@@ -141,6 +141,41 @@ function looksLikeCorruptBuildCache(log: string): boolean {
     && /undefined reference to `(HardwareSerial|EspClass|HEXBuilder|UartClass)/.test(log);
 }
 
+// esptool's DTR/RTS auto-reset pulse (used to drop the ESP32 into its ROM
+// bootloader before flashing) is a hardware timing race, not a software
+// error — very common on CH340-based dev boards, and it's normal for it to
+// simply not line up on a given attempt with nothing about the board, cable,
+// or sketch actually wrong. This log signature only ever appears *after* a
+// successful compile (esptool only runs once arduino-cli has a .bin to
+// flash), so seeing it means the code was fine and just the handshake
+// didn't land — worth an automatic retry rather than making the student
+// click Upload again themselves.
+function looksLikeTransientUploadFailure(log: string): boolean {
+  return /No serial data received|Failed to connect to ESP32|Timed out waiting for packet/i.test(log);
+}
+
+/** Runs one USB upload (compile+flash in a single arduino-cli invocation),
+ *  auto-retrying a couple of times with a short pause if the failure looks
+ *  like the ESP32 just didn't drop into its bootloader in time rather than
+ *  a real compile error — see looksLikeTransientUploadFailure above. */
+async function uploadWithRetry(
+  args: string[],
+  buildDir: string,
+  onLog: (msg: string) => void
+): Promise<{ success: boolean; log: string }> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const result = await compileWithSelfHeal(args, buildDir, onLog);
+    if (result.success || attempt === MAX_ATTEMPTS || !looksLikeTransientUploadFailure(result.log)) {
+      return result;
+    }
+    onLog(`[Compiler] Board didn't respond in time (attempt ${attempt}/${MAX_ATTEMPTS}) — retrying automatically...`);
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  // Unreachable (loop always returns), but keeps TS happy.
+  return { success: false, log: '' };
+}
+
 /** Runs one arduino-cli compile, auto-retrying once with a wiped build dir
  *  if the failure looks like build-cache corruption rather than a real
  *  error in the user's code. */
@@ -351,9 +386,10 @@ export function registerCompilerHandlers() {
           getRequiredLibraries(code),
           (msg) => event.sender.send('compiler:log', msg),
           async () => {
-            // ── USB (serial) upload — unchanged single-step compile+upload ──
+            // ── USB (serial) upload — single-step compile+upload, with an
+            // automatic retry if only the ESP32 bootloader handshake failed.
             if (!wifiTarget && !btTarget) {
-              const result = await compileWithSelfHeal(
+              const result = await uploadWithRetry(
                 ['compile', '--upload', '-b', fqbn, '-p', port, '-j', '0', '--build-path', buildDir, sketchDir],
                 buildDir,
                 (msg) => event.sender.send('compiler:log', msg)
